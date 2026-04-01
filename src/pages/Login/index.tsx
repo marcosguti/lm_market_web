@@ -1,0 +1,91 @@
+import { Alert, Button, Form, Input } from 'antd';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+
+import SEO from '../../components/SEO';
+import { useAuth } from '../../context/AuthContext';
+
+const Login = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm<{ email: string; password: string }>();
+
+  const handleSubmit = async (values: { email: string; password: string }) => {
+    setError('');
+    setLoading(true);
+    const result = await login(values.email, values.password);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    navigate(from, { replace: true });
+  };
+
+  return (
+    <>
+      <SEO title="Iniciar sesión" description="Inicia sesión en LM Market." />
+      <div className="mx-auto max-w-md px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
+        <h1 className="mb-[24px] text-3xl font-bold text-gray-900">Iniciar sesión</h1>
+        <Form
+          className="flex flex-col gap-[16px]"
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          requiredMark={false}
+        >
+          {error ? <Alert message={error} showIcon type="error" /> : null}
+          <Form.Item
+            label="Email *"
+            name="email"
+            rules={[
+              { required: true, message: 'El email es obligatorio' },
+              { type: 'email', message: 'Ingresa un email válido' },
+            ]}
+          >
+            <Input
+              className="h-[40px] rounded border-gray-300"
+              onChange={() => {
+                setError('');
+              }}
+              placeholder="tu@email.com"
+            />
+          </Form.Item>
+          <Form.Item
+            label="Contraseña *"
+            name="password"
+            rules={[{ required: true, message: 'La contraseña es obligatoria' }]}
+          >
+            <Input.Password
+              className="h-[40px] rounded border-gray-300"
+              onChange={() => {
+                setError('');
+              }}
+              placeholder="Tu contraseña"
+            />
+          </Form.Item>
+          <Button className="h-[40px]" htmlType="submit" loading={loading} type="primary">
+            Entrar
+          </Button>
+        </Form>
+        <p className="mt-[16px] text-center text-sm text-gray-600">
+          <Link className="text-primary hover:underline" to="/recuperar-password">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
+        <p className="mt-[8px] text-center text-sm text-gray-600">
+          ¿No tienes cuenta?{' '}
+          <Link className="text-primary hover:underline" to="/registro">
+            Regístrate
+          </Link>
+        </p>
+      </div>
+    </>
+  );
+};
+
+export default Login;

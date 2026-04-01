@@ -1,0 +1,28 @@
+---
+description: Reglas de estilos Tailwind para frontend
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Estilos Frontend con Tailwind
+
+## 1) Base de estilos
+
+- Usa `className` con utilidades de Tailwind para estilos visuales en componentes.
+
+## 2) Spacing
+
+- Usa `margin` y `padding` en multiplos de 4px.
+- Prioriza formato arbitrario explicito: `mt-[16px]`, `px-[8px]`, `p-[4px]`.
+- Evita valores de spacing que no sean multiplos de 4px.
+
+## 3) Colores
+
+- Para `border`, `bg` y `text`, usa colores definidos en `tailwind.config` o paleta oficial de Tailwind.
+- En este proyecto, prioriza `primary` y colores de Tailwind (`gray-*`, `red-*`, etc.) sobre hex hardcodeado.
+
+## 4) Componentes UI (Ant Design)
+
+- Para elementos UI (formularios y controles), prioriza siempre Ant Design.
+- Usa componentes de AntD para `Form`, `Table`, `Input`, `Checkbox`, `Radio`, `Tree`, `DatePicker`, `Select`, `Button` y componentes similares.
+- Evita implementar controles UI base con HTML nativo si existe equivalente en AntD, salvo excepcion justificada por requerimiento funcional.
