@@ -26,3 +26,8 @@ alwaysApply: false
 - Para elementos UI (formularios y controles), prioriza siempre Ant Design.
 - Usa componentes de AntD para `Form`, `Table`, `Input`, `Checkbox`, `Radio`, `Tree`, `DatePicker`, `Select`, `Button` y componentes similares.
 - Evita implementar controles UI base con HTML nativo si existe equivalente en AntD, salvo excepcion justificada por requerimiento funcional.
+
+## 5) Creación de pages
+
+- Evita dejar archivos muy largos no mas de 300 lineas que las pages esten muy modularizadas dentrro de ellas
+- Las vistas siempre crear dentro de una carpeta ejm MiVista/index.jsx con los types separados en un archivo types.ts dentro de la carpeta

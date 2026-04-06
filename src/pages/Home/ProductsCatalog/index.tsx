@@ -7,6 +7,7 @@ import {
   InputNumber,
   message,
   Pagination,
+  Select,
   Spin,
   Tag,
 } from 'antd';
@@ -38,6 +39,14 @@ type ProductsResponse = {
 };
 
 const PAGE_SIZE_OPTIONS = [24, 50, 100] as const;
+
+type SortParam = '' | 'priceAsc' | 'priceDesc';
+
+const SORT_OPTIONS: { label: string; value: SortParam }[] = [
+  { label: 'Orden por defecto (nombre)', value: '' },
+  { label: 'Precio: menor a mayor', value: 'priceAsc' },
+  { label: 'Precio: mayor a menor', value: 'priceDesc' },
+];
 
 function CatalogProductCard({ p }: { p: ProductRow }) {
   const { addToCart } = useCart();
@@ -124,6 +133,7 @@ const ProductsCatalog = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(50);
+  const [sort, setSort] = useState<SortParam>('');
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ProductsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +153,7 @@ const ProductsCatalog = () => {
       pageSize: String(pageSize),
     };
     if (debouncedSearch) params.search = debouncedSearch;
+    if (sort === 'priceAsc' || sort === 'priceDesc') params.sort = sort;
     try {
       const { data, ok, status } = await api<ProductsResponse>('/api/products', {
         skipAuth: true,
@@ -169,7 +180,7 @@ const ProductsCatalog = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, pageSize]);
+  }, [page, debouncedSearch, pageSize, sort]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -203,17 +214,30 @@ const ProductsCatalog = () => {
                 Busca por descripción o marca. Precios y existencias sincronizados con el almacén.
               </p>
             </div>
-            <div className="w-full max-w-md md:shrink-0">
-              <Input.Search
-                allowClear
-                placeholder="Buscar productos…"
+            <div className="flex w-full flex-col gap-[12px] sm:flex-row sm:items-end sm:justify-end md:max-w-2xl md:shrink-0">
+              <div className="w-full min-w-[200px] flex-1 sm:max-w-md">
+                <Input.Search
+                  allowClear
+                  placeholder="Buscar productos…"
+                  size="large"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className="[&_.ant-input-affix-wrapper]:rounded-xl [&_.ant-input-affix-wrapper]:border-gray-200 [&_.ant-input-affix-wrapper]:shadow-sm"
+                />
+              </div>
+              <Select
+                className="w-full min-w-[200px] sm:w-[240px]"
+                options={SORT_OPTIONS}
+                placeholder="Ordenar por"
                 size="large"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+                value={sort || undefined}
+                onChange={(v) => {
+                  setSort(v);
                   setPage(1);
                 }}
-                className="[&_.ant-input-affix-wrapper]:rounded-xl [&_.ant-input-affix-wrapper]:border-gray-200 [&_.ant-input-affix-wrapper]:shadow-sm"
               />
             </div>
           </div>

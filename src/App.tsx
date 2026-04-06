@@ -15,7 +15,6 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import RecoverPassword from './pages/RecoverPassword';
 import Register from './pages/Register';
-import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
 import GlobalStyles from './styles/GlobalStyles';
 import { theme } from './theme';
@@ -39,7 +38,6 @@ function App() {
                   <Route path="/registro" element={<Register />} />
                   <Route path="/iniciar-sesion" element={<Login />} />
                   <Route path="/recuperar-password" element={<RecoverPassword />} />
-                  <Route path="/restablecer-password" element={<ResetPassword />} />
                   <Route
                     path="/cuenta"
                     element={
