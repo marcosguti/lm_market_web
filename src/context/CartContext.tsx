@@ -5,14 +5,20 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
+import type { OrderLine } from '../types/order';
+
+import { ensureCart, patchOrderLines } from '../api/orders';
 import { getMaxOrderQuantity } from '../utils/cartStock';
+import { useAuth } from './AuthContext';
 
 const CART_KEY = 'lm_market_cart';
 
 export interface CartProduct {
+  code?: string;
   id: string;
   name: string;
   price: number;
@@ -40,7 +46,9 @@ interface CartContextValue {
   cart: CartItem[];
   cartSubtotal: number;
   clearCart: () => void;
+  orderId: null | string;
   removeFromCart: (productId: string) => void;
+  replaceFromOrderLines: (lines: OrderLine[]) => void;
   totalItemCount: number;
   updateQuantity: (productId: string, quantity: number) => void;
 }
@@ -68,12 +76,86 @@ function clampQuantity(product: CartProduct, quantity: number): number {
   return Math.min(Math.max(1, Math.trunc(quantity)), max);
 }
 
+function mapOrderLinesToCart(lines: OrderLine[]): CartItem[] {
+  return lines.map((line) => ({
+    product: {
+      code: line.code,
+      id: line.code,
+      name: line.name,
+      price: line.unitPrice,
+    },
+    productId: line.code,
+    quantity: Math.max(1, Math.trunc(line.quantity)),
+  }));
+}
+
+function mapCartToOrderPatch(cart: CartItem[]): { code: string; quantity: number }[] {
+  return cart
+    .map((item) => ({
+      code: item.product.code?.trim() || item.productId.trim(),
+      quantity: item.quantity,
+    }))
+    .filter((item) => item.code.length > 0);
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>(() => loadCart());
+  const [orderId, setOrderId] = useState<null | string>(null);
+  const syncingFromServerRef = useRef(false);
+  const syncingRequestRef = useRef(false);
 
   useEffect(() => {
     saveCart(cart);
   }, [cart]);
+
+  const replaceFromOrderLines = useCallback((lines: OrderLine[]) => {
+    syncingFromServerRef.current = true;
+    setCart(mapOrderLinesToCart(lines));
+    queueMicrotask(() => {
+      syncingFromServerRef.current = false;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (user?.type !== 'client') {
+      queueMicrotask(() => setOrderId(null));
+      return;
+    }
+
+    let cancelled = false;
+    const hydrate = async () => {
+      const result = await ensureCart();
+      if (cancelled || !result.ok || !result.data?.order) return;
+      setOrderId(result.data.order.id);
+      replaceFromOrderLines(result.data.order.products);
+    };
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [replaceFromOrderLines, user?.id, user?.type]);
+
+  useEffect(() => {
+    if (user?.type !== 'client') return;
+    if (!orderId) return;
+    if (syncingFromServerRef.current) return;
+    if (syncingRequestRef.current) return;
+
+    const lines = mapCartToOrderPatch(cart);
+    syncingRequestRef.current = true;
+    const sync = async () => {
+      const result = await patchOrderLines(orderId, lines);
+      syncingRequestRef.current = false;
+      if (!result.ok || !result.data?.order) return;
+      setOrderId(result.data.order.id);
+      const next = mapOrderLinesToCart(result.data.order.products);
+      if (JSON.stringify(next) !== JSON.stringify(cart)) {
+        replaceFromOrderLines(result.data.order.products);
+      }
+    };
+    void sync();
+  }, [cart, orderId, replaceFromOrderLines, user?.type]);
 
   const cartSubtotal = useMemo(
     () => cart.reduce((sum, i) => sum + i.product.price * i.quantity, 0),
@@ -93,7 +175,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return prev;
       }
 
-      const existing = prev.find((i) => i.productId === product.id);
+      const productKey = product.code ?? product.id;
+      const existing = prev.find((i) => i.productId === productKey);
       const mergedProduct: CartProduct = existing ? { ...existing.product, ...product } : product;
 
       const cap = getMaxOrderQuantity(mergedProduct);
@@ -103,7 +186,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         result = { added, requested };
         if (added === 0) return prev;
         return prev.map((i) =>
-          i.productId === product.id ? { ...i, product: mergedProduct, quantity: nextQty } : i
+          i.productId === productKey ? { ...i, product: mergedProduct, quantity: nextQty } : i
         );
       }
 
@@ -114,7 +197,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ...prev,
         {
           product: mergedProduct,
-          productId: product.id,
+          productId: productKey,
           quantity: firstQty,
         },
       ];
@@ -154,11 +237,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
       cart,
       cartSubtotal,
       clearCart,
+      orderId,
       removeFromCart,
+      replaceFromOrderLines,
       totalItemCount,
       updateQuantity,
     }),
-    [addToCart, cart, cartSubtotal, clearCart, removeFromCart, totalItemCount, updateQuantity]
+    [
+      addToCart,
+      cart,
+      cartSubtotal,
+      clearCart,
+      orderId,
+      removeFromCart,
+      replaceFromOrderLines,
+      totalItemCount,
+      updateQuantity,
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

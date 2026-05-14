@@ -1,25 +1,29 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom';
 
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/AuthContext';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
+  allowedTypes?: string[];
+  children: React.ReactNode;
 }
 
-function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth()
-  const location = useLocation()
+function ProtectedRoute({ allowedTypes, children }: ProtectedRouteProps) {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
-    return null
+    return null;
   }
 
   if (!user) {
-    return <Navigate to="/iniciar-sesion" state={{ from: location }} replace />
+    return <Navigate to="/iniciar-sesion" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>
+  if (allowedTypes && allowedTypes.length > 0 && !allowedTypes.includes(user.type)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
 }
 
-export default ProtectedRoute
-
+export default ProtectedRoute;

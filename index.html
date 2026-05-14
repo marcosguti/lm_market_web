@@ -19,6 +19,54 @@
     <meta name="geo.placename" content="Tovar, Mérida" />
     <link rel="canonical" href="https://www.lmmarket.com" />
     <title>LM Market - Calidad al mejor precio</title>
+    <style>
+      #initial-loader-container {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        background-color: #97bd11;
+      }
+      .initial-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      .initial-loader-logo-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 9rem;
+        height: 9rem;
+        border-radius: 9999px;
+        background-color: #ffffff;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+      }
+      .initial-loader-logo {
+        height: 5rem;
+        width: auto;
+      }
+      .initial-loader-spinner {
+        position: absolute;
+        inset: -0.45rem;
+        width: 100%;
+        height: 100%;
+        border-radius: 9999px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: rgba(255, 255, 255, 0.95) transparent rgba(255, 255, 255, 0.45) transparent;
+        animation: initial-loader-spin 0.95s linear infinite;
+      }
+      @keyframes initial-loader-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="initial-loader-container">

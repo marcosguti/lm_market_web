@@ -1,4 +1,4 @@
-import { ShoppingCartOutlined } from '@ant-design/icons';
+import { BellOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -9,25 +9,42 @@ import {
   Form,
   Input,
   InputNumber,
+  List,
   type MenuProps,
   message,
   Modal,
+  Popover,
 } from 'antd';
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
+import { getNotifications, markNotificationRead } from '../../api/notifications';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { connectSocket } from '../../realtime/socket';
 import { theme } from '../../theme';
 import { getMaxOrderQuantity } from '../../utils/cartStock';
 
 const Header = () => {
+  const navigate = useNavigate();
   const { user, login, logout } = useAuth();
   const { cart, cartSubtotal, clearCart, removeFromCart, totalItemCount, updateQuantity } =
     useCart();
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<
+    {
+      body: string;
+      createdAt: string;
+      id: string;
+      orderId: null | string;
+      persisted: boolean;
+      readAt: null | string;
+      title: string;
+    }[]
+  >([]);
   const [form] = Form.useForm<{ email: string; password: string }>();
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -66,6 +83,82 @@ const Header = () => {
       }),
     [cartSubtotal]
   );
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.readAt).length,
+    [notifications]
+  );
+
+  useEffect(() => {
+    if (!user) {
+      queueMicrotask(() => setNotifications([]));
+      return;
+    }
+
+    let cancelled = false;
+    const token = localStorage.getItem('lm_market_token');
+
+    const run = async () => {
+      const response = await getNotifications(1, 20);
+      if (!cancelled && response.ok && response.data?.data) {
+        setNotifications(
+          response.data.data.map((item) => ({
+            body: item.body,
+            createdAt: item.createdAt,
+            id: item.id,
+            orderId: item.orderId,
+            persisted: true,
+            readAt: item.readAt,
+            title: item.title,
+          }))
+        );
+      }
+    };
+    void run();
+
+    if (!token) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const socket = connectSocket(token);
+    const onNotification = (payload: {
+      body?: string;
+      orderId?: string;
+      status?: string;
+      title?: string;
+      type?: string;
+    }) => {
+      const now = new Date().toISOString();
+      const next = {
+        body: payload.body ?? 'Tu orden fue actualizada',
+        createdAt: now,
+        id: `${now}-${Math.random().toString(16).slice(2)}`,
+        orderId: payload.orderId ?? null,
+        persisted: false,
+        readAt: null,
+        title: payload.title ?? 'Notificacion',
+      };
+      setNotifications((prev) => [next, ...prev].slice(0, 30));
+
+      const status = payload.status;
+      const shouldDesktop =
+        status === 'preparando' || status === 'listaParaReparto' || status === 'enReparto';
+      if (
+        shouldDesktop &&
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'granted'
+      ) {
+        void new Notification(next.title, { body: next.body });
+      }
+    };
+
+    socket.on('notification:new', onNotification);
+    return () => {
+      cancelled = true;
+      socket.off('notification:new', onNotification);
+    };
+  }, [user]);
 
   const userMenuItems: MenuProps['items'] = [
     {
@@ -80,6 +173,62 @@ const Header = () => {
         </Link>
       ),
     },
+    ...(user?.type === 'client'
+      ? [
+          {
+            key: 'mis-compras',
+            label: (
+              <Link
+                className="no-underline hover:no-underline"
+                to="/mis-compras"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Mis compras
+              </Link>
+            ),
+          },
+        ]
+      : []),
+    ...(user?.type === 'admin' || user?.type === 'superAdmin'
+      ? [
+          {
+            key: 'orders',
+            label: (
+              <Link className="no-underline hover:no-underline" to="/orders">
+                Panel ordenes
+              </Link>
+            ),
+          },
+          {
+            key: 'users',
+            label: (
+              <Link className="no-underline hover:no-underline" to="/users">
+                Usuarios
+              </Link>
+            ),
+          },
+          {
+            key: 'productos',
+            label: (
+              <Link className="no-underline hover:no-underline" to="/productos">
+                Productos
+              </Link>
+            ),
+          },
+        ]
+      : []),
+    ...(user?.type === 'deliveryDriver'
+      ? [
+          {
+            key: 'reparto',
+            label: (
+              <Link className="no-underline hover:no-underline" to="/reparto">
+                Panel reparto
+              </Link>
+            ),
+          },
+        ]
+      : []),
     {
       key: 'logout',
       label: 'Cerrar sesión',
@@ -148,6 +297,76 @@ const Header = () => {
             >
               Contacto
             </Link>
+            {user ? (
+              <Popover
+                trigger="click"
+                open={notificationsOpen}
+                onOpenChange={setNotificationsOpen}
+                content={
+                  <div className="w-[320px] max-w-[80vw]">
+                    {notifications.length === 0 ? (
+                      <p className="m-0 text-sm text-gray-500">Sin notificaciones</p>
+                    ) : (
+                      <List
+                        size="small"
+                        dataSource={notifications}
+                        renderItem={(item) => (
+                          <List.Item
+                            className="cursor-pointer"
+                            onClick={() => {
+                              if (!item.readAt) {
+                                setNotifications((prev) =>
+                                  prev.map((notification) =>
+                                    notification.id === item.id
+                                      ? { ...notification, readAt: new Date().toISOString() }
+                                      : notification
+                                  )
+                                );
+                                if (item.persisted) {
+                                  void markNotificationRead(item.id);
+                                }
+                              }
+                              setNotificationsOpen(false);
+                            }}
+                          >
+                            <List.Item.Meta
+                              title={
+                                <span className="text-sm font-semibold">
+                                  {item.title}
+                                  {!item.readAt ? (
+                                    <span className="ml-2 inline-block h-2 w-2 rounded-full bg-primary" />
+                                  ) : null}
+                                </span>
+                              }
+                              description={
+                                <span className="text-xs text-gray-500">
+                                  {item.body}
+                                  <br />
+                                  {new Date(item.createdAt).toLocaleString()}
+                                </span>
+                              }
+                            />
+                          </List.Item>
+                        )}
+                      />
+                    )}
+                  </div>
+                }
+              >
+                <Badge
+                  color={theme.token.colorPrimary}
+                  count={unreadCount}
+                  offset={[-2, 2]}
+                  size="small"
+                >
+                  <Button
+                    aria-label="Notificaciones"
+                    icon={<BellOutlined className="size-5" />}
+                    type="text"
+                  />
+                </Badge>
+              </Popover>
+            ) : null}
             <Badge
               color={theme.token.colorPrimary}
               count={totalItemCount}
@@ -293,7 +512,16 @@ const Header = () => {
               disabled={cart.length === 0}
               type="primary"
               onClick={() => {
-                void message.info('El pago en línea estará disponible próximamente.');
+                setCartDrawerOpen(false);
+                if (user?.type === 'client') {
+                  navigate('/checkout');
+                  return;
+                }
+                if (!user) {
+                  void message.info('Inicia sesión para continuar al checkout.');
+                  return;
+                }
+                void message.info('Solo usuarios cliente pueden finalizar el pago.');
               }}
             >
               Ir a pagar

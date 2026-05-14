@@ -40,6 +40,11 @@ function buildHref(path: string, params?: Record<string, string>): string {
   return url.href;
 }
 
+/** Same URL rules as `api()` (dev: same-origin + Vite proxy; prod: `VITE_API_URL`). */
+export function apiUrl(path: string): string {
+  return buildHref(path);
+}
+
 function applyJsonContentType(headers: Headers, method: string, body: RequestInit['body']): void {
   if (method === 'GET' || method === 'HEAD') return;
   if (headers.has('Content-Type')) return;

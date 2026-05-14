@@ -58,6 +58,7 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
       {
         id: p.id,
         brand: p.brand,
+        code: p.code,
         name: p.name,
         price: p.price,
         totalStock: p.totalStock,
@@ -211,7 +212,8 @@ const ProductsCatalog = () => {
                 Catálogo de productos
               </h2>
               <p className="max-w-xl text-base text-gray-600">
-                Busca por descripción o marca. Precios y existencias sincronizados con el almacén.
+                Busca por nombre, código, descripción o marca. Precios y existencias sincronizados
+                con el almacén.
               </p>
             </div>
             <div className="flex w-full flex-col gap-[12px] sm:flex-row sm:items-end sm:justify-end md:max-w-2xl md:shrink-0">
