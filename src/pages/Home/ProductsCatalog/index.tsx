@@ -1,7 +1,9 @@
+import { FilterOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
   ConfigProvider,
+  Drawer,
   Empty,
   Input,
   InputNumber,
@@ -15,9 +17,11 @@ import esES from 'antd/locale/es_ES';
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';
 
+import { type CatalogFilterItem, fetchBrands, fetchDepartments } from '../../../api/catalog';
 import { api } from '../../../api/client';
 import { useCart } from '../../../context/CartContext';
 import { theme } from '../../../theme';
+import { CatalogSidebar } from './CatalogSidebar';
 
 type ProductRow = {
   id: string;
@@ -135,6 +139,11 @@ const ProductsCatalog = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(50);
   const [sort, setSort] = useState<SortParam>('');
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [brands, setBrands] = useState<CatalogFilterItem[]>([]);
+  const [departments, setDepartments] = useState<CatalogFilterItem[]>([]);
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ProductsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +155,14 @@ const ProductsCatalog = () => {
     return () => window.clearTimeout(handle);
   }, [search]);
 
+  useEffect(() => {
+    void (async () => {
+      const [b, d] = await Promise.all([fetchBrands(), fetchDepartments()]);
+      setBrands(b);
+      setDepartments(d);
+    })();
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -155,6 +172,8 @@ const ProductsCatalog = () => {
     };
     if (debouncedSearch) params.search = debouncedSearch;
     if (sort === 'priceAsc' || sort === 'priceDesc') params.sort = sort;
+    if (selectedBrandId) params.brand = selectedBrandId;
+    if (selectedDepartmentId) params.department = selectedDepartmentId;
     try {
       const { data, ok, status } = await api<ProductsResponse>('/api/products', {
         skipAuth: true,
@@ -181,13 +200,46 @@ const ProductsCatalog = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, pageSize, sort]);
+  }, [page, debouncedSearch, pageSize, sort, selectedBrandId, selectedDepartmentId]);
 
   useEffect(() => {
     queueMicrotask(() => {
       void load();
     });
   }, [load]);
+
+  const handleSelectBrand = (id: string | null) => {
+    setSelectedBrandId(id);
+    setPage(1);
+    setFiltersDrawerOpen(false);
+  };
+
+  const handleSelectDepartment = (id: string | null) => {
+    setSelectedDepartmentId(id);
+    setPage(1);
+    setFiltersDrawerOpen(false);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedBrandId(null);
+    setSelectedDepartmentId(null);
+    setPage(1);
+    setFiltersDrawerOpen(false);
+  };
+
+  const activeBrandName = brands.find((b) => b.id === selectedBrandId)?.name;
+  const activeDepartmentName = departments.find((d) => d.id === selectedDepartmentId)?.name;
+  const hasFilter = selectedBrandId !== null || selectedDepartmentId !== null;
+
+  const sidebarProps = {
+    brands,
+    departments,
+    selectedBrandId,
+    selectedDepartmentId,
+    onSelectBrand: handleSelectBrand,
+    onSelectDepartment: handleSelectDepartment,
+    onClear: handleClearFilters,
+  };
 
   return (
     <ConfigProvider locale={esES} theme={theme}>
@@ -212,11 +264,18 @@ const ProductsCatalog = () => {
                 Catálogo de productos
               </h2>
               <p className="max-w-xl text-base text-gray-600">
-                Busca por nombre, código, descripción o marca. Precios y existencias sincronizados
-                con el almacén.
+                Busca por nombre, código, descripción o marca. Filtra por marca o categoría en el
+                panel lateral.
               </p>
             </div>
             <div className="flex w-full flex-col gap-[12px] sm:flex-row sm:items-end sm:justify-end md:max-w-2xl md:shrink-0">
+              <Button
+                className="lg:hidden"
+                icon={<FilterOutlined />}
+                onClick={() => setFiltersDrawerOpen(true)}
+              >
+                Filtros
+              </Button>
               <div className="w-full min-w-[200px] flex-1 sm:max-w-md">
                 <Input.Search
                   allowClear
@@ -243,6 +302,33 @@ const ProductsCatalog = () => {
               />
             </div>
           </div>
+
+          {hasFilter ? (
+            <div className="mb-[20px] flex flex-wrap items-center gap-[8px]">
+              {activeBrandName ? (
+                <Tag closable onClose={() => handleSelectBrand(null)} className="m-0">
+                  Marca: {activeBrandName}
+                </Tag>
+              ) : null}
+              {activeDepartmentName ? (
+                <Tag closable onClose={() => handleSelectDepartment(null)} className="m-0">
+                  Categoría: {activeDepartmentName}
+                </Tag>
+              ) : null}
+            </div>
+          ) : null}
+
+          <Drawer
+            title="Filtros"
+            placement="left"
+            open={filtersDrawerOpen}
+            onClose={() => setFiltersDrawerOpen(false)}
+            className="lg:hidden"
+            width={300}
+          >
+            <CatalogSidebar {...sidebarProps} />
+          </Drawer>
+
           <Spin
             spinning={loading}
             size="large"
@@ -252,45 +338,50 @@ const ProductsCatalog = () => {
               container: 'max-h-none overflow-visible',
             }}
           >
-            <div>
-              {error ? (
-                <Alert
-                  className="rounded-2xl border-red-100 bg-red-50/80"
-                  message={error}
-                  showIcon
-                  type="error"
-                />
-              ) : result && result.data.length === 0 ? (
-                <Empty className="py-[48px]" description="No hay productos para mostrar" />
-              ) : (
-                <>
-                  <ul className="mb-[40px] grid list-none gap-[20px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[2000px]:grid-cols-5">
-                    {(result?.data ?? []).map((p) => (
-                      <CatalogProductCard key={p.id} p={p} />
-                    ))}
-                  </ul>
-                  {result && result.total > 0 ? (
-                    <div className="flex flex-col items-center gap-[16px] border-t border-gray-200/80 pt-[32px] sm:flex-row sm:justify-center">
-                      <Pagination
-                        className="[&_.ant-pagination-item-active]:border-primary [&_.ant-pagination-item-active]:bg-primary [&_.ant-pagination-item-active_a]:!text-white"
-                        current={page}
-                        pageSize={pageSize}
-                        pageSizeOptions={PAGE_SIZE_OPTIONS.map(String)}
-                        showSizeChanger
-                        showTotal={(total, range) =>
-                          `${range[0]}–${range[1]} de ${total} productos`
-                        }
-                        total={result.total}
-                        onChange={(p) => setPage(p)}
-                        onShowSizeChange={(_current, size) => {
-                          setPageSize(size);
-                          setPage(1);
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                </>
-              )}
+            <div className="flex flex-col gap-[24px] lg:flex-row lg:items-start">
+              <div className="hidden lg:block">
+                <CatalogSidebar {...sidebarProps} />
+              </div>
+              <div className="min-w-0 flex-1">
+                {error ? (
+                  <Alert
+                    className="rounded-2xl border-red-100 bg-red-50/80"
+                    message={error}
+                    showIcon
+                    type="error"
+                  />
+                ) : result && result.data.length === 0 ? (
+                  <Empty className="py-[48px]" description="No hay productos para mostrar" />
+                ) : (
+                  <>
+                    <ul className="mb-[40px] grid list-none gap-[20px] sm:grid-cols-2 xl:grid-cols-3 min-[2000px]:grid-cols-4">
+                      {(result?.data ?? []).map((p) => (
+                        <CatalogProductCard key={p.id} p={p} />
+                      ))}
+                    </ul>
+                    {result && result.total > 0 ? (
+                      <div className="flex flex-col items-center gap-[16px] border-t border-gray-200/80 pt-[32px] sm:flex-row sm:justify-center">
+                        <Pagination
+                          className="[&_.ant-pagination-item-active]:border-primary [&_.ant-pagination-item-active]:bg-primary [&_.ant-pagination-item-active_a]:!text-white"
+                          current={page}
+                          pageSize={pageSize}
+                          pageSizeOptions={PAGE_SIZE_OPTIONS.map(String)}
+                          showSizeChanger
+                          showTotal={(total, range) =>
+                            `${range[0]}–${range[1]} de ${total} productos`
+                          }
+                          total={result.total}
+                          onChange={(p) => setPage(p)}
+                          onShowSizeChange={(_current, size) => {
+                            setPageSize(size);
+                            setPage(1);
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </div>
           </Spin>
         </div>

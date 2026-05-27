@@ -6,10 +6,12 @@ export interface AdminProduct {
   active: boolean;
   adminMovements: number | null;
   brand: string;
+  brandId?: string;
   code: string;
   cost: number;
   createdAt: string;
   department: string;
+  departmentId?: string;
   description: string | null;
   id: string;
   imageUrl: string | null;
@@ -36,7 +38,9 @@ export async function getAdminProducts(
   pageSize: number,
   search?: string,
   sort?: '' | 'priceAsc' | 'priceDesc',
-  active: AdminProductActiveFilter = 'all'
+  active: AdminProductActiveFilter = 'all',
+  brand?: string,
+  department?: string
 ) {
   return api<PaginatedAdminProducts>('/api/admin/products', {
     params: {
@@ -45,6 +49,8 @@ export async function getAdminProducts(
       active,
       ...(search ? { search } : {}),
       ...(sort === 'priceAsc' || sort === 'priceDesc' ? { sort } : {}),
+      ...(brand ? { brand } : {}),
+      ...(department ? { department } : {}),
     },
   });
 }
@@ -74,7 +80,7 @@ export async function createAdminProduct(body: {
 
 export async function patchAdminProduct(
   id: string,
-  body: Partial<{ brand: string; description: string; imageUrl: string }>
+  body: Partial<{ brand: string; department: string; description: string; imageUrl: string }>
 ) {
   return api<{ product: AdminProduct }>(`/api/admin/products/${id}`, {
     body: JSON.stringify(body),

@@ -7,9 +7,7 @@ const GlobalStyles = () => {
     <Global
       styles={css`
         body {
-          * {
-            color: ${colors.text1};
-          }
+          color: ${colors.text1};
         }
         input {
           box-shadow: none !important;

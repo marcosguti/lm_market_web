@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom';
+
+const linkClass = 'text-gray-300 transition-colors hover:text-primary';
+const textClass = 'text-sm text-gray-300';
 
 const Footer = () => {
   return (
@@ -7,7 +10,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div>
             <h3 className="mb-4 text-lg font-semibold text-white">Información Corporativa</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className={`space-y-2 ${textClass}`}>
               <li>GRUPO LM MARKET C.A</li>
               <li>RIF: J-502772642</li>
               <li>CR 4A LOCAL NRO 9-173</li>
@@ -17,20 +20,14 @@ const Footer = () => {
           </div>
           <div>
             <h3 className="mb-4 text-lg font-semibold text-white">Contacto</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className={`space-y-2 ${textClass}`}>
               <li>
-                <a
-                  href="tel:+584121184736"
-                  className="transition-colors hover:text-primary"
-                >
+                <a href="tel:+584121184736" className={linkClass}>
                   +58 0412-1184736
                 </a>
               </li>
               <li>
-                <a
-                  href="mailto:Soporte@lmmarketca.com"
-                  className="transition-colors hover:text-primary"
-                >
+                <a href="mailto:Soporte@lmmarketca.com" className={linkClass}>
                   Soporte@lmmarketca.com
                 </a>
               </li>
@@ -41,7 +38,7 @@ const Footer = () => {
                 href="https://instagram.com/grupolmmarket"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm transition-colors hover:text-primary"
+                className={linkClass}
               >
                 @grupolmmarket
               </a>
@@ -49,34 +46,34 @@ const Footer = () => {
           </div>
           <div>
             <h3 className="mb-4 text-lg font-semibold text-white">Web</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className={`space-y-2 ${textClass}`}>
               <li>
-                <Link to="/" className="transition-colors hover:text-primary">
+                <Link to="/" className={linkClass}>
                   Inicio
                 </Link>
               </li>
               <li>
-                <Link to="/nosotros" className="transition-colors hover:text-primary">
+                <Link to="/nosotros" className={linkClass}>
                   Nosotros
                 </Link>
               </li>
               <li>
-                <Link to="/blog" className="transition-colors hover:text-primary">
+                <Link to="/blog" className={linkClass}>
                   Blog
                 </Link>
               </li>
               <li>
-                <Link to="/terminos" className="transition-colors hover:text-primary">
+                <Link to="/terminos" className={linkClass}>
                   Términos y Condiciones
                 </Link>
               </li>
               <li>
-                <Link to="/preguntas-frecuentes" className="transition-colors hover:text-primary">
+                <Link to="/preguntas-frecuentes" className={linkClass}>
                   Preguntas frecuentes
                 </Link>
               </li>
               <li>
-                <Link to="/contacto" className="transition-colors hover:text-primary">
+                <Link to="/contacto" className={linkClass}>
                   Contacto
                 </Link>
               </li>
@@ -84,14 +81,12 @@ const Footer = () => {
           </div>
           <div>
             <h3 className="mb-4 text-lg font-semibold text-white">Recibe Información</h3>
-            <p className="mb-4 text-sm">
-              Registra tu email y te enviamos nuestro folleto.
-            </p>
+            <p className={`mb-4 ${textClass}`}>Registra tu email y te enviamos nuestro folleto.</p>
             <form className="flex gap-2">
               <input
                 type="email"
                 placeholder="Tu email"
-                className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-400 focus:border-primary focus:outline-none"
               />
               <button
                 type="submit"
@@ -102,7 +97,7 @@ const Footer = () => {
             </form>
           </div>
         </div>
-        <div className="mt-8 border-t border-gray-800 pt-8 text-center text-sm">
+        <div className={`mt-8 border-t border-gray-800 pt-8 text-center ${textClass}`}>
           <p>
             © 2025 Todos los derechos reservados{' '}
             <span className="font-semibold text-primary">LM MARKET</span>
@@ -110,8 +105,7 @@ const Footer = () => {
         </div>
       </div>
     </footer>
-  )
-}
+  );
+};
 
-export default Footer
-
+export default Footer;
