@@ -34,21 +34,8 @@ const SORT_OPTIONS = [
   { label: 'Precio mayor a menor', value: 'priceDesc' as const },
 ];
 
-const urlValidator = {
-  validator: async (_: unknown, value: unknown) => {
-    const s = typeof value === 'string' ? value.trim() : '';
-    if (!s) return Promise.resolve();
-    try {
-      const u = new URL(s);
-      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-        return Promise.reject(new Error('URL no válida'));
-      }
-    } catch {
-      return Promise.reject(new Error('URL no válida'));
-    }
-    return Promise.resolve();
-  },
-};
+const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+const MAX_SIZE_KB = 500;
 
 const AdminProducts = () => {
   const [data, setData] = useState<AdminProduct[]>([]);
@@ -66,6 +53,11 @@ const AdminProducts = () => {
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
+
+  const [createImageFile, setCreateImageFile] = useState<File | null>(null);
+  const [createImagePreview, setCreateImagePreview] = useState<string>('');
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string>('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +77,28 @@ const AdminProducts = () => {
     });
   }, [load]);
 
+  const handleCreateImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_SIZE_KB * 1024) {
+      void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
+      return;
+    }
+    setCreateImageFile(file);
+    setCreateImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_SIZE_KB * 1024) {
+      void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
+      return;
+    }
+    setEditImageFile(file);
+    setEditImagePreview(URL.createObjectURL(file));
+  };
+
   const openCreate = () => {
     createForm.resetFields();
     createForm.setFieldsValue({
@@ -94,6 +108,8 @@ const AdminProducts = () => {
       salesToday: 0,
       totalStock: 0,
     });
+    setCreateImageFile(null);
+    setCreateImagePreview('');
     setCreateOpen(true);
   };
 
@@ -108,7 +124,7 @@ const AdminProducts = () => {
       cost: values.cost,
       department: values.department,
       description: values.description || undefined,
-      imageUrl: values.imageUrl?.trim() || undefined,
+      imageFile: createImageFile ?? undefined,
       initialBalance: values.initialBalance ?? undefined,
       inventoryValueBs: values.inventoryValueBs ?? undefined,
       marginPct: values.marginPct ?? undefined,
@@ -131,8 +147,9 @@ const AdminProducts = () => {
     editForm.setFieldsValue({
       brand: row.brand,
       description: row.description ?? '',
-      imageUrl: row.imageUrl ?? '',
     });
+    setEditImageFile(null);
+    setEditImagePreview('');
     setEditOpen(true);
   };
 
@@ -143,7 +160,7 @@ const AdminProducts = () => {
     const res = await patchAdminProduct(editing.id, {
       brand: values.brand,
       description: values.description ?? '',
-      imageUrl: values.imageUrl?.trim() ?? '',
+      imageFile: editImageFile,
     });
     if (!res.ok) {
       void message.error((res.data as { error?: string })?.error ?? 'No se pudo guardar');
@@ -342,8 +359,17 @@ const AdminProducts = () => {
           <Form.Item label="Descripción" name="description">
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.Item label="URL de imagen" name="imageUrl" rules={[urlValidator]}>
-            <Input placeholder="https://…" />
+          <Form.Item label={`Imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
+            <input
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={handleCreateImageChange}
+            />
+            {createImagePreview && (
+              <div className="mt-2">
+                <Image height={80} src={createImagePreview} />
+              </div>
+            )}
           </Form.Item>
           <Form.Item label="Activo en catálogo" name="active" valuePropName="checked">
             <Switch />
@@ -360,7 +386,7 @@ const AdminProducts = () => {
         }}
         onOk={() => void submitEdit()}
         open={editOpen}
-        title="Editar producto (solo imagen, marca y descripción)"
+        title="Editar producto (solo marca, descripción e imagen)"
         width={520}
       >
         <p className="mb-4 text-sm text-gray-500">
@@ -373,8 +399,23 @@ const AdminProducts = () => {
           <Form.Item label="Descripción" name="description">
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item label="URL de imagen" name="imageUrl" rules={[urlValidator]}>
-            <Input placeholder="https://…" />
+          <Form.Item label={`Nueva imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
+            <input
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={handleEditImageChange}
+            />
+            {(editImagePreview || editing?.imageUrl) && (
+              <div className="mt-2">
+                <Image
+                  height={80}
+                  src={editImagePreview || editing?.imageUrl}
+                />
+                {editImagePreview && (
+                  <span className="ml-2 text-xs text-gray-500">Nueva imagen</span>
+                )}
+              </div>
+            )}
           </Form.Item>
         </Form>
       </Modal>

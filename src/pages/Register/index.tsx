@@ -91,11 +91,15 @@ const Register = () => {
             <Input className="h-[40px] rounded border-gray-300" onChange={() => setError('')} />
           </Form.Item>
           <Form.Item
-            label="Contraseña * (mínimo 6 caracteres)"
+            label="Contraseña * (mínimo 8 caracteres, incluir mayúsculas, minúsculas y números)"
             name="password"
             rules={[
               { required: true, message: 'La contraseña es obligatoria' },
-              { min: 6, message: 'Mínimo 6 caracteres' },
+              { min: 8, message: 'Mínimo 8 caracteres' },
+              {
+                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
+                message: 'Debe incluir mayúsculas, minúsculas y números',
+              },
             ]}
           >
             <Input.Password

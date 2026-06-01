@@ -31,6 +31,7 @@ export interface OrderEntity {
   totalAmount: number;
   updatedAt: string;
   userId: string;
+  userNumberId: string;
   version: number;
 }
 

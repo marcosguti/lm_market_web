@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import Layout from './components/Layout';
+import OrganizationSchema from './components/OrganizationSchema';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -38,6 +39,7 @@ function App() {
 
   return (
     <HelmetProvider>
+      <OrganizationSchema />
       <ConfigProvider theme={theme}>
         <GlobalStyles />
         <AuthProvider>

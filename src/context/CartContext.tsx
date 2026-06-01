@@ -147,7 +147,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const sync = async () => {
       const result = await patchOrderLines(orderId, lines);
       syncingRequestRef.current = false;
-      if (!result.ok || !result.data?.order) return;
+      if (!result.ok) {
+        const error = result.data as { code?: string };
+        if (error?.code === 'ORDER_NOT_PENDING') {
+          const cartResult = await ensureCart();
+          if (cartResult.ok && cartResult.data?.order) {
+            setOrderId(cartResult.data.order.id);
+            replaceFromOrderLines(cartResult.data.order.products);
+          }
+        }
+        return;
+      }
+      if (!result.data?.order) return;
       setOrderId(result.data.order.id);
       const next = mapOrderLinesToCart(result.data.order.products);
       if (JSON.stringify(next) !== JSON.stringify(cart)) {

@@ -85,7 +85,7 @@ const AdminOrdersPage = () => {
     <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Space direction="vertical" size={16} className="w-full">
         <Title level={2} className="!mb-0">
-          Ordenes de cocina
+          Ordenes de compra
         </Title>
         {error ? <Alert type="error" showIcon message={error} /> : null}
         <Table
@@ -94,6 +94,7 @@ const AdminOrdersPage = () => {
           dataSource={data}
           columns={[
             { title: 'Orden', dataIndex: 'id', key: 'id' },
+            { title: 'Cédula', dataIndex: 'userNumberId', key: 'userNumberId' },
             {
               title: 'Estado',
               dataIndex: 'status',
@@ -111,6 +112,18 @@ const AdminOrdersPage = () => {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}`,
+            },
+            {
+              title: 'Creación',
+              dataIndex: 'createdAt',
+              key: 'createdAt',
+              render: (value: string) => new Date(value).toLocaleString(),
+            },
+            {
+              title: 'Actualización',
+              dataIndex: 'updatedAt',
+              key: 'updatedAt',
+              render: (value: string) => new Date(value).toLocaleString(),
             },
             {
               title: 'Acciones',

@@ -1,5 +1,21 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.lmmarket.com/sitemap.xml
+Allow: /nosotros
+Allow: /blog
+Allow: /contacto
+Allow: /terminos
+Allow: /preguntas-frecuentes
+Allow: /registro
+Allow: /iniciar-sesion
+Allow: /recuperar-password
 
+Disallow: /cuenta
+Disallow: /checkout
+Disallow: /mis-compras
+Disallow: /orders
+Disallow: /users
+Disallow: /productos
+Disallow: /reparto
+
+Sitemap: https://www.lmmarket.com/sitemap.xml

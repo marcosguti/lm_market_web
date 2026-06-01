@@ -296,6 +296,12 @@ const Users = () => {
             extra="Si lo dejas vacío se usará #123456"
             label="Contraseña (opcional)"
             name="password"
+            rules={[
+              {
+                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
+                message: 'Debe incluir mayúsculas, minúsculas y números (mínimo 8 caracteres)',
+              },
+            ]}
           >
             <Input.Password />
           </Form.Item>

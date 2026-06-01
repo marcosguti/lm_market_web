@@ -5,6 +5,7 @@ import {
   ConfigProvider,
   Drawer,
   Empty,
+  Image,
   Input,
   InputNumber,
   message,
@@ -31,6 +32,7 @@ type ProductRow = {
   price: number;
   code: string;
   department: string;
+  imageUrl: string | null;
   totalStock: number | null;
 };
 
@@ -86,36 +88,43 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
       className="group h-full"
     >
       <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100/90 bg-white/90 shadow-md ring-1 ring-black/[0.03] backdrop-blur-sm transition-all duration-300 hover:-translate-y-[4px] hover:shadow-xl hover:ring-primary/20">
-        <div className="h-[4px] w-full bg-gradient-to-r from-primary via-lime-400 to-emerald-500 opacity-90" />
-        <div className="flex flex-1 flex-col p-[20px] sm:p-[24px]">
-          <div className="mb-[12px] flex flex-wrap items-center gap-[8px]">
-            <Tag className="bg-primary/12 m-0 border-0 font-medium text-primary">{p.brand}</Tag>
-            <span className="text-xs text-gray-400">{p.department}</span>
+        {p.imageUrl ? (
+          <div className="relative flex h-[180px] w-full items-center justify-center overflow-hidden bg-white">
+            <Image alt={p.name} className="max-h-[160px] object-cover" src={p.imageUrl} />
+            <div className="absolute left-0 top-0 h-[4px] w-full" />
           </div>
-          <h3 className="mb-[8px] line-clamp-2 text-lg font-semibold leading-snug text-gray-900">
+        ) : (
+          <div
+            className="relative flex w-full items-center justify-center"
+            style={{ height: '180px' }}
+          >
+            <span className="text-5xl text-white/70"></span>
+          </div>
+        )}
+        <div className="flex flex-1 flex-col p-[16px] sm:p-[20px]">
+          <div className="mb-[8px] flex flex-wrap items-center gap-[6px]">
+            <Tag className="bg-primary/12 m-0 border-0 text-[11px] font-medium text-primary">
+              {p.brand}
+            </Tag>
+            <span className="text-[11px] text-gray-400">{p.department}</span>
+          </div>
+          <h3 className="mb-[6px] line-clamp-2 text-[15px] font-semibold leading-snug text-gray-900">
             {p.name}
           </h3>
-          {p.description ? (
-            <p className="mb-[16px] line-clamp-2 flex-1 text-sm leading-relaxed text-gray-500">
-              {p.description}
-            </p>
-          ) : (
-            <div className="mb-[16px] flex-1" />
-          )}
-          <div className="mt-auto border-t border-gray-100 pt-[16px]">
-            <p className="text-2xl font-bold tabular-nums tracking-tight text-primary">
+          <div className="mt-auto border-t border-gray-100 pt-[12px]">
+            <p className="text-xl font-bold tabular-nums tracking-tight text-primary">
               REF {p.price}
             </p>
-            <p className="mt-[8px] text-xs text-gray-400">
+            <p className="mt-[4px] text-[11px] text-gray-400">
               Cód. {p.code}
-              {p.totalStock !== null && p.totalStock !== undefined
-                ? ` · Disponibles: ${p.totalStock}`
-                : ''}
+              {p.totalStock != null && p.totalStock < 20 ? (
+                <span className="ml-[10px] text-red-500">Quedan {p.totalStock} unidades</span>
+              ) : null}
             </p>
-            <div className="mt-[12px] flex flex-wrap items-center gap-[8px]">
-              <span className="text-xs text-gray-600">Cant.</span>
+            <div className="mt-[10px] flex flex-wrap items-center gap-[6px]">
+              <span className="text-[12px] text-gray-600">Cant.</span>
               <InputNumber
-                className="min-w-[88px]"
+                className="min-w-[80px]"
                 max={maxOrder}
                 min={1}
                 size="small"

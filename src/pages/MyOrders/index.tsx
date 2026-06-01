@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import type { OrderEntity } from '../../types/order';
 
 import { getOrderHistory } from '../../api/orders';
+import { connectSocket } from '../../realtime/socket';
 
 const { Title } = Typography;
+
+const TOKEN_KEY = 'lm_market_token';
 
 const statusColor: Record<string, string> = {
   cancelada: 'red',
@@ -16,6 +19,12 @@ const statusColor: Record<string, string> = {
   pendiente: 'orange',
   preparando: 'purple',
 };
+
+interface OrderUpdatedPayload {
+  id: string;
+  status: string;
+  totalAmount: number;
+}
 
 const MyOrdersPage = () => {
   const [data, setData] = useState<OrderEntity[]>([]);
@@ -39,6 +48,29 @@ const MyOrdersPage = () => {
     void run();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+
+    const socket = connectSocket(token);
+
+    const onOrderUpdated = (payload: OrderUpdatedPayload) => {
+      setData((prev) =>
+        prev.map((order) =>
+          order.id === payload.id
+            ? { ...order, status: payload.status as OrderEntity['status'] }
+            : order
+        )
+      );
+    };
+
+    socket.on('order:updated', onOrderUpdated);
+
+    return () => {
+      socket.off('order:updated', onOrderUpdated);
     };
   }, []);
 

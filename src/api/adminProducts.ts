@@ -63,7 +63,7 @@ export async function createAdminProduct(body: {
   cost: number | string;
   department: string;
   description?: string;
-  imageUrl?: string;
+  imageFile?: File;
   initialBalance?: number;
   inventoryValueBs?: number | string;
   marginPct?: number | string;
@@ -72,18 +72,41 @@ export async function createAdminProduct(body: {
   salesToday?: number;
   totalStock?: number;
 }) {
+  const formData = new FormData();
+  formData.append('active', String(body.active ?? true));
+  if (body.adminMovements !== undefined) formData.append('adminMovements', String(body.adminMovements));
+  formData.append('brand', body.brand);
+  formData.append('code', body.code);
+  formData.append('cost', String(body.cost));
+  formData.append('department', body.department);
+  if (body.description) formData.append('description', body.description);
+  if (body.imageFile) formData.append('imageUrl', body.imageFile);
+  if (body.initialBalance !== undefined) formData.append('initialBalance', String(body.initialBalance));
+  if (body.inventoryValueBs !== undefined) formData.append('inventoryValueBs', String(body.inventoryValueBs));
+  if (body.marginPct !== undefined) formData.append('marginPct', String(body.marginPct));
+  formData.append('name', body.name);
+  formData.append('price', String(body.price));
+  if (body.salesToday !== undefined) formData.append('salesToday', String(body.salesToday));
+  if (body.totalStock !== undefined) formData.append('totalStock', String(body.totalStock));
+
   return api<{ product: AdminProduct }>('/api/admin/products', {
-    body: JSON.stringify(body),
+    body: formData,
     method: 'POST',
   });
 }
 
 export async function patchAdminProduct(
   id: string,
-  body: Partial<{ brand: string; department: string; description: string; imageUrl: string }>
+  body: Partial<{ brand: string; department: string; description: string; imageFile: File }>
 ) {
+  const formData = new FormData();
+  if (body.brand !== undefined) formData.append('brand', body.brand);
+  if (body.department !== undefined) formData.append('department', body.department);
+  if (body.description !== undefined) formData.append('description', body.description);
+  if (body.imageFile) formData.append('imageUrl', body.imageFile);
+
   return api<{ product: AdminProduct }>(`/api/admin/products/${id}`, {
-    body: JSON.stringify(body),
+    body: formData,
     method: 'PATCH',
   });
 }
