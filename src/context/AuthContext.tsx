@@ -39,6 +39,7 @@ interface AuthContextValue extends AuthState {
     email: string;
     password: string;
     numberId: string;
+    numberIdType: string;
     firstName?: string;
     lastName?: string;
   }) => Promise<{ error?: string }>;
@@ -155,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string;
       password: string;
       numberId: string;
+      numberIdType: string;
       firstName?: string;
       lastName?: string;
     }) => {
@@ -167,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: data.firstName ?? '',
         lastName: data.lastName ?? '',
         numberId: data.numberId,
+        numberIdType: data.numberIdType,
         password: data.password,
       });
       if (error || (status !== 201 && status !== 200) || !res?.accessToken) {

@@ -1,9 +1,16 @@
-import { Alert, Button, Form, Input } from 'antd';
+import { Alert, Button, Form, Input, Select } from 'antd';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import SEO from '../../components/SEO';
 import { useAuth } from '../../context/AuthContext';
+
+const NUMBER_ID_TYPE_OPTIONS = [
+  { label: 'V', value: 'V' },
+  { label: 'E', value: 'E' },
+  { label: 'P', value: 'P' },
+  { label: 'J', value: 'J' },
+];
 
 const Register = () => {
   const navigate = useNavigate();
@@ -14,6 +21,7 @@ const Register = () => {
     email: string;
     firstName: string;
     lastName: string;
+    numberIdType: string;
     numberId: string;
     password: string;
   }>();
@@ -22,6 +30,7 @@ const Register = () => {
     email: string;
     firstName: string;
     lastName: string;
+    numberIdType: string;
     numberId: string;
     password: string;
   }) => {
@@ -31,6 +40,7 @@ const Register = () => {
       email: values.email,
       firstName: values.firstName,
       lastName: values.lastName,
+      numberIdType: values.numberIdType,
       numberId: values.numberId,
       password: values.password,
     });
@@ -83,13 +93,29 @@ const Register = () => {
           >
             <Input className="h-[40px] rounded border-gray-300" onChange={() => setError('')} />
           </Form.Item>
-          <Form.Item
-            label="Cédula / Número de identificación *"
-            name="numberId"
-            rules={[{ required: true, message: 'Este campo es obligatorio' }]}
-          >
-            <Input className="h-[40px] rounded border-gray-300" onChange={() => setError('')} />
-          </Form.Item>
+          <div className="flex items-end gap-[12px]">
+            <Form.Item
+              label="Tipo ID"
+              name="numberIdType"
+              rules={[{ required: true, message: 'Selecciona el tipo' }]}
+              className="mb-0 w-[90px] shrink-0"
+            >
+              <Select
+                className="h-[40px]"
+                options={NUMBER_ID_TYPE_OPTIONS}
+                placeholder="Tipo"
+                onChange={() => setError('')}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Cédula / Número de identificación *"
+              name="numberId"
+              rules={[{ required: true, message: 'Este campo es obligatorio' }]}
+              className="flex-1"
+            >
+              <Input className="rounded border-gray-300" onChange={() => setError('')} />
+            </Form.Item>
+          </div>
           <Form.Item
             label="Contraseña * (mínimo 8 caracteres, incluir mayúsculas, minúsculas y números)"
             name="password"

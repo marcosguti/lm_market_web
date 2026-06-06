@@ -10,6 +10,7 @@ import {
   getAdminUsers,
   patchAdminUser,
 } from '../../api/adminUsers';
+import { NUMBER_ID_TYPE_OPTIONS } from '../../constants/numberIdType';
 import { useAuth } from '../../context/AuthContext';
 
 const { Title } = Typography;
@@ -88,7 +89,7 @@ const Users = () => {
 
   const openCreate = () => {
     createForm.resetFields();
-    createForm.setFieldsValue({ type: 'client' });
+    createForm.setFieldsValue({ numberIdType: 'V', type: 'client' });
     setCreateOpen(true);
   };
 
@@ -128,6 +129,7 @@ const Users = () => {
       firstName: row.firstName,
       lastName: row.lastName,
       numberId: row.numberId,
+      numberIdType: row.numberIdType,
       phone: row.phone ?? '',
     };
     editForm.setFieldsValue(row.type === 'superAdmin' ? base : { ...base, type: row.type });
@@ -144,6 +146,7 @@ const Users = () => {
       firstName: values.firstName,
       lastName: values.lastName,
       numberId: values.numberId,
+      numberIdType: values.numberIdType,
       phone: values.phone,
     };
     if (editing.type !== 'superAdmin') {
@@ -193,6 +196,7 @@ const Users = () => {
     {
       dataIndex: 'numberId',
       key: 'numberId',
+      render: (_: string, row) => `${row.numberIdType}-${row.numberId}`,
       title: 'CI / ID',
     },
     {
@@ -280,9 +284,24 @@ const Users = () => {
           <Form.Item label="Apellido" name="lastName" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item label="CI / ID" name="numberId" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
+          <div className="flex items-end gap-3">
+            <Form.Item
+              className="mb-0 w-[90px] shrink-0"
+              label="Tipo ID"
+              name="numberIdType"
+              rules={[{ required: true, message: 'Selecciona el tipo' }]}
+            >
+              <Select options={[...NUMBER_ID_TYPE_OPTIONS]} placeholder="Tipo" />
+            </Form.Item>
+            <Form.Item
+              className="mb-0 flex-1"
+              label="CI / ID"
+              name="numberId"
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
+          </div>
           <Form.Item label="Rol" name="type" rules={[{ required: true }]}>
             <Select options={typeOptions} />
           </Form.Item>
@@ -330,9 +349,24 @@ const Users = () => {
           <Form.Item label="Apellido" name="lastName" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item label="CI / ID" name="numberId" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
+          <div className="flex items-end gap-3">
+            <Form.Item
+              className="mb-0 w-[90px] shrink-0"
+              label="Tipo ID"
+              name="numberIdType"
+              rules={[{ required: true, message: 'Selecciona el tipo' }]}
+            >
+              <Select options={[...NUMBER_ID_TYPE_OPTIONS]} placeholder="Tipo" />
+            </Form.Item>
+            <Form.Item
+              className="mb-0 flex-1"
+              label="CI / ID"
+              name="numberId"
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
+          </div>
           {editing?.type === 'superAdmin' ? (
             <Form.Item label="Rol">
               <Tag color={typeColor.superAdmin}>{typeLabel.superAdmin}</Tag>

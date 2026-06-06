@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { Slider } from 'antd';
 import type { CatalogFilterItem } from '../../../api/catalog';
 
 type CatalogSidebarProps = {
@@ -7,8 +8,10 @@ type CatalogSidebarProps = {
   departments: CatalogFilterItem[];
   selectedBrandId: string | null;
   selectedDepartmentId: string | null;
+  priceRange: [number, number];
   onSelectBrand: (id: string | null) => void;
   onSelectDepartment: (id: string | null) => void;
+  onPriceRangeChange: (v: [number, number]) => void;
   onClear: () => void;
 };
 
@@ -82,16 +85,63 @@ function FilterSection({
   );
 }
 
+function PriceRangeSection({
+  priceRange,
+  onPriceRangeChange,
+}: {
+  priceRange: [number, number];
+  onPriceRangeChange: (v: [number, number]) => void;
+}) {
+  return (
+    <div className="mb-[24px] overflow-x-hidden rounded-2xl border border-gray-200/80 bg-white/90 p-[20px] shadow-sm backdrop-blur-sm last:mb-0">
+      <h3 className="mb-[10px] text-xs font-semibold uppercase tracking-wider text-gray-500">
+        Precio
+      </h3>
+      <div className="px-[4px]">
+        <Slider
+          range
+          min={0}
+          max={50}
+          step={1}
+          value={priceRange}
+          onChange={onPriceRangeChange}
+          tooltip={{
+            formatter: (v) => {
+              if (v === null) return '';
+              return v === 50 ? '50+' : String(v);
+            },
+          }}
+          styles={{ track: { backgroundColor: '#97BD11' }, handle: { borderColor: '#97BD11' } }}
+        />
+        <div className="mt-[8px] flex justify-between text-sm">
+          <span className="font-medium text-gray-700">
+            {priceRange[0] === 0 ? '0' : priceRange[0]}
+          </span>
+          <span className="font-medium text-gray-700">
+            {priceRange[1] === 50 ? '50+' : priceRange[1]}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CatalogSidebar({
   brands,
   departments,
   selectedBrandId,
   selectedDepartmentId,
+  priceRange,
   onSelectBrand,
   onSelectDepartment,
+  onPriceRangeChange,
   onClear,
 }: CatalogSidebarProps) {
-  const hasFilter = selectedBrandId !== null || selectedDepartmentId !== null;
+  const hasFilter =
+    selectedBrandId !== null ||
+    selectedDepartmentId !== null ||
+    priceRange[0] > 0 ||
+    priceRange[1] < 50;
 
   return (
     <aside className="w-full shrink-0 lg:w-[260px]">
@@ -108,6 +158,10 @@ export function CatalogSidebar({
             </button>
           ) : null}
         </div>
+        <PriceRangeSection
+          priceRange={priceRange}
+          onPriceRangeChange={onPriceRangeChange}
+        />
         <FilterSection
           title="Marcas"
           items={brands}

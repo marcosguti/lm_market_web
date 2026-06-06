@@ -5,6 +5,8 @@ export type AdminAssignableUserType = 'admin' | 'client' | 'deliveryDriver';
 
 export type UserType = AdminAssignableUserType | 'superAdmin';
 
+export type NumberIdType = 'E' | 'J' | 'P' | 'V';
+
 export interface AdminUser {
   address: null | string;
   createdAt: string;
@@ -13,6 +15,7 @@ export interface AdminUser {
   id: string;
   lastName: string;
   numberId: string;
+  numberIdType: NumberIdType;
   phone: null | string;
   type: UserType;
   updatedAt: string;
@@ -47,6 +50,7 @@ export async function createAdminUser(body: {
   firstName: string;
   lastName: string;
   numberId: string;
+  numberIdType: NumberIdType;
   password?: string;
   phone?: string;
   type: AdminAssignableUserType;
@@ -65,6 +69,7 @@ export async function patchAdminUser(
     firstName: string;
     lastName: string;
     numberId: string;
+    numberIdType: NumberIdType;
     phone: string;
     type: AdminAssignableUserType;
   }>

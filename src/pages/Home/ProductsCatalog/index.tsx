@@ -150,6 +150,8 @@ const ProductsCatalog = () => {
   const [sort, setSort] = useState<SortParam>('');
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50]);
+  const [debouncedPriceRange, setDebouncedPriceRange] = useState<[number, number]>([0, 50]);
   const [brands, setBrands] = useState<CatalogFilterItem[]>([]);
   const [departments, setDepartments] = useState<CatalogFilterItem[]>([]);
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
@@ -163,6 +165,16 @@ const ProductsCatalog = () => {
     }, 500);
     return () => window.clearTimeout(handle);
   }, [search]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedPriceRange(priceRange);
+      if (priceRange[0] > 0 || priceRange[1] < 50) {
+        setPage(1);
+      }
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [priceRange]);
 
   useEffect(() => {
     void (async () => {
@@ -183,6 +195,8 @@ const ProductsCatalog = () => {
     if (sort === 'priceAsc' || sort === 'priceDesc') params.sort = sort;
     if (selectedBrandId) params.brand = selectedBrandId;
     if (selectedDepartmentId) params.department = selectedDepartmentId;
+    if (debouncedPriceRange[0] > 0) params.minPrice = String(debouncedPriceRange[0]);
+    if (debouncedPriceRange[1] < 50) params.maxPrice = String(debouncedPriceRange[1]);
     try {
       const { data, ok, status } = await api<ProductsResponse>('/api/products', {
         skipAuth: true,
@@ -209,7 +223,15 @@ const ProductsCatalog = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, pageSize, sort, selectedBrandId, selectedDepartmentId]);
+  }, [
+    page,
+    debouncedSearch,
+    pageSize,
+    sort,
+    selectedBrandId,
+    selectedDepartmentId,
+    debouncedPriceRange,
+  ]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -232,21 +254,29 @@ const ProductsCatalog = () => {
   const handleClearFilters = () => {
     setSelectedBrandId(null);
     setSelectedDepartmentId(null);
+    setPriceRange([0, 50]);
+    setDebouncedPriceRange([0, 50]);
     setPage(1);
     setFiltersDrawerOpen(false);
   };
 
   const activeBrandName = brands.find((b) => b.id === selectedBrandId)?.name;
   const activeDepartmentName = departments.find((d) => d.id === selectedDepartmentId)?.name;
-  const hasFilter = selectedBrandId !== null || selectedDepartmentId !== null;
+  const hasFilter =
+    selectedBrandId !== null ||
+    selectedDepartmentId !== null ||
+    debouncedPriceRange[0] > 0 ||
+    debouncedPriceRange[1] < 50;
 
   const sidebarProps = {
     brands,
     departments,
     selectedBrandId,
     selectedDepartmentId,
+    priceRange,
     onSelectBrand: handleSelectBrand,
     onSelectDepartment: handleSelectDepartment,
+    onPriceRangeChange: setPriceRange,
     onClear: handleClearFilters,
   };
 
