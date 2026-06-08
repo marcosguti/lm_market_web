@@ -90,7 +90,12 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
       <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100/90 bg-white/90 shadow-md ring-1 ring-black/[0.03] backdrop-blur-sm transition-all duration-300 hover:-translate-y-[4px] hover:shadow-xl hover:ring-primary/20">
         {p.imageUrl ? (
           <div className="relative flex h-[180px] w-full items-center justify-center overflow-hidden bg-white">
-            <Image alt={p.name} className="max-h-[160px] object-cover" src={p.imageUrl} />
+            <Image
+              alt={p.name}
+              className="max-h-[160px] object-cover"
+              src={p.imageUrl}
+              loadingProps={{ lazy: true }}
+            />
             <div className="absolute left-0 top-0 h-[4px] w-full" />
           </div>
         ) : (
