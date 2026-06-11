@@ -1,5 +1,6 @@
 import type { ColumnsType } from 'antd/es/table';
 
+import { UploadOutlined } from '@ant-design/icons';
 import {
   Button,
   Form,
@@ -14,6 +15,7 @@ import {
   Table,
   Tag,
   Typography,
+  Upload,
 } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -76,28 +78,6 @@ const AdminProducts = () => {
       void load();
     });
   }, [load]);
-
-  const handleCreateImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_SIZE_KB * 1024) {
-      void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
-      return;
-    }
-    setCreateImageFile(file);
-    setCreateImagePreview(URL.createObjectURL(file));
-  };
-
-  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_SIZE_KB * 1024) {
-      void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
-      return;
-    }
-    setEditImageFile(file);
-    setEditImagePreview(URL.createObjectURL(file));
-  };
 
   const openCreate = () => {
     createForm.resetFields();
@@ -309,8 +289,9 @@ const AdminProducts = () => {
       />
 
       <Modal
-        destroyOnClose
+        destroyOnHidden
         okText="Crear"
+        cancelText="Cancelar"
         onCancel={() => setCreateOpen(false)}
         onOk={() => void submitCreate()}
         open={createOpen}
@@ -360,11 +341,39 @@ const AdminProducts = () => {
             <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item label={`Imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
-            <input
-              type="file"
+            <Upload
               accept={IMAGE_ACCEPT}
-              onChange={handleCreateImageChange}
-            />
+              beforeUpload={(file) => {
+                if (file.size > MAX_SIZE_KB * 1024) {
+                  void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
+                  return Upload.LIST_IGNORE;
+                }
+                setCreateImageFile(file);
+                setCreateImagePreview(URL.createObjectURL(file));
+                return false;
+              }}
+              maxCount={1}
+              onRemove={() => {
+                setCreateImageFile(null);
+                setCreateImagePreview('');
+              }}
+              fileList={
+                createImagePreview
+                  ? [
+                      {
+                        uid: '-1',
+                        name: 'imagen',
+                        status: 'done',
+                        url: createImagePreview,
+                      },
+                    ]
+                  : []
+              }
+              listType="picture"
+              showUploadList={{ showPreviewIcon: false }}
+            >
+              <Button icon={<UploadOutlined />}>Seleccionar imagen</Button>
+            </Upload>
             {createImagePreview && (
               <div className="mt-2">
                 <Image height={80} src={createImagePreview} />
@@ -400,17 +409,42 @@ const AdminProducts = () => {
             <Input.TextArea rows={3} />
           </Form.Item>
           <Form.Item label={`Nueva imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
-            <input
-              type="file"
+            <Upload
               accept={IMAGE_ACCEPT}
-              onChange={handleEditImageChange}
-            />
+              beforeUpload={(file) => {
+                if (file.size > MAX_SIZE_KB * 1024) {
+                  void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
+                  return Upload.LIST_IGNORE;
+                }
+                setEditImageFile(file);
+                setEditImagePreview(URL.createObjectURL(file));
+                return false;
+              }}
+              maxCount={1}
+              onRemove={() => {
+                setEditImageFile(null);
+                setEditImagePreview('');
+              }}
+              fileList={
+                editImagePreview || editing?.imageUrl
+                  ? [
+                      {
+                        uid: '-1',
+                        name: 'imagen',
+                        status: 'done',
+                        url: editImagePreview || editing?.imageUrl,
+                      },
+                    ]
+                  : []
+              }
+              listType="picture"
+              showUploadList={{ showPreviewIcon: false }}
+            >
+              <Button icon={<UploadOutlined />}>Cambiar imagen</Button>
+            </Upload>
             {(editImagePreview || editing?.imageUrl) && (
               <div className="mt-2">
-                <Image
-                  height={80}
-                  src={editImagePreview || editing?.imageUrl}
-                />
+                <Image height={80} src={editImagePreview || editing?.imageUrl} />
                 {editImagePreview && (
                   <span className="ml-2 text-xs text-gray-500">Nueva imagen</span>
                 )}

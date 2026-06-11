@@ -1,11 +1,13 @@
 export type OrderStatus =
-  | 'cancelada'
-  | 'enReparto'
-  | 'entregada'
-  | 'listaParaReparto'
-  | 'pagoConfirmado'
-  | 'pendiente'
-  | 'preparando';
+  | 'pending'
+  | 'paymentConfirmed'
+  | 'preparing'
+  | 'readyForDelivery'
+  | 'outForDelivery'
+  | 'delivered'
+  | 'cancelled';
+
+export type PaymentMethod = 'cash' | 'zelle' | 'mobilePayment' | 'binance';
 
 export interface OrderLine {
   code: string;
@@ -14,6 +16,17 @@ export interface OrderLine {
   name: string;
   quantity: number;
   unitPrice: number;
+}
+
+export interface Payment {
+  id: string;
+  method: PaymentMethod;
+  reference: string;
+  paidAt: string;
+  screenshotUrl: string | null;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  createdAt: string;
 }
 
 export interface OrderEntity {
@@ -26,6 +39,11 @@ export interface OrderEntity {
   id: string;
   idempotencyKey: null | string;
   paidAt: null | string;
+  payment: Payment | null;
+  paymentDate: null | string;
+  paymentMethod: PaymentMethod | null;
+  paymentReference: null | string;
+  paymentScreenshotUrl: null | string;
   products: OrderLine[];
   status: OrderStatus;
   totalAmount: number;

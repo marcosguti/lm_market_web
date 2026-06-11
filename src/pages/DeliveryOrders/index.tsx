@@ -13,13 +13,13 @@ import {
 const { Title } = Typography;
 
 const statusColor: Record<string, string> = {
-  cancelada: 'red',
-  enReparto: 'blue',
-  entregada: 'green',
-  listaParaReparto: 'cyan',
-  pagoConfirmado: 'gold',
-  pendiente: 'orange',
-  preparando: 'purple',
+  cancelled: 'red',
+  outForDelivery: 'blue',
+  delivered: 'green',
+  readyForDelivery: 'cyan',
+  paymentConfirmed: 'gold',
+  pending: 'orange',
+  preparing: 'purple',
 };
 
 const DeliveryOrdersPage = () => {
@@ -94,9 +94,18 @@ const DeliveryOrdersPage = () => {
                     title: 'Estado',
                     dataIndex: 'status',
                     key: 'status',
-                    render: (status: string) => (
-                      <Tag color={statusColor[status] ?? 'default'}>{status}</Tag>
-                    ),
+                    render: (status: string) => {
+                      const labels: Record<string, string> = {
+                        pending: 'Pendiente',
+                        paymentConfirmed: 'Pago Confirmado',
+                        preparing: 'Preparando',
+                        readyForDelivery: 'Lista para Reparto',
+                        outForDelivery: 'En Reparto',
+                        delivered: 'Entregada',
+                        cancelled: 'Cancelada',
+                      };
+                      return <Tag color={statusColor[status] ?? 'default'}>{labels[status] ?? status}</Tag>;
+                    },
                   },
                   {
                     title: 'Accion',
@@ -124,9 +133,18 @@ const DeliveryOrdersPage = () => {
                     title: 'Estado',
                     dataIndex: 'status',
                     key: 'status',
-                    render: (status: string) => (
-                      <Tag color={statusColor[status] ?? 'default'}>{status}</Tag>
-                    ),
+                    render: (status: string) => {
+                      const labels: Record<string, string> = {
+                        pending: 'Pendiente',
+                        paymentConfirmed: 'Pago Confirmado',
+                        preparing: 'Preparando',
+                        readyForDelivery: 'Lista para Reparto',
+                        outForDelivery: 'En Reparto',
+                        delivered: 'Entregada',
+                        cancelled: 'Cancelada',
+                      };
+                      return <Tag color={statusColor[status] ?? 'default'}>{labels[status] ?? status}</Tag>;
+                    },
                   },
                   {
                     title: 'Accion',

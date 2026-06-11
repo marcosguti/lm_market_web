@@ -156,6 +156,7 @@ const ProductsCatalog = () => {
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50]);
+  const [sliderValue, setSliderValue] = useState<[number, number]>([0, 50]);
   const [debouncedPriceRange, setDebouncedPriceRange] = useState<[number, number]>([0, 50]);
   const [brands, setBrands] = useState<CatalogFilterItem[]>([]);
   const [departments, setDepartments] = useState<CatalogFilterItem[]>([]);
@@ -173,10 +174,17 @@ const ProductsCatalog = () => {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      setDebouncedPriceRange(priceRange);
-      if (priceRange[0] > 0 || priceRange[1] < 50) {
+      setPriceRange(sliderValue);
+      if (sliderValue[0] > 0 || sliderValue[1] < 50) {
         setPage(1);
       }
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [sliderValue]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedPriceRange(priceRange);
     }, 300);
     return () => window.clearTimeout(handle);
   }, [priceRange]);
@@ -260,6 +268,7 @@ const ProductsCatalog = () => {
     setSelectedBrandId(null);
     setSelectedDepartmentId(null);
     setPriceRange([0, 50]);
+    setSliderValue([0, 50]);
     setDebouncedPriceRange([0, 50]);
     setPage(1);
     setFiltersDrawerOpen(false);
@@ -270,18 +279,18 @@ const ProductsCatalog = () => {
   const hasFilter =
     selectedBrandId !== null ||
     selectedDepartmentId !== null ||
-    debouncedPriceRange[0] > 0 ||
-    debouncedPriceRange[1] < 50;
+    priceRange[0] > 0 ||
+    priceRange[1] < 50;
 
   const sidebarProps = {
     brands,
     departments,
     selectedBrandId,
     selectedDepartmentId,
-    priceRange,
+    priceRange: sliderValue,
     onSelectBrand: handleSelectBrand,
     onSelectDepartment: handleSelectDepartment,
-    onPriceRangeChange: setPriceRange,
+    onPriceRangeChange: setSliderValue,
     onClear: handleClearFilters,
   };
 

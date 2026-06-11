@@ -10,6 +10,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import About from './pages/About';
 import Account from './pages/Account';
+import AdminDeals from './pages/AdminDeals';
 import AdminOrdersPage from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
 import Blog from './pages/Blog';
@@ -101,6 +102,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
                         <AdminProducts />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/ofertas"
+                    element={
+                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                        <AdminDeals />
                       </ProtectedRoute>
                     }
                   />

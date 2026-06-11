@@ -1,9 +1,14 @@
 import { Button } from 'antd';
+import { AnimatePresence } from 'framer-motion';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 
 import Carousel from '../../components/Carousel';
+import DealBannerModal from '../../components/DealBannerModal';
 import SEO from '../../components/SEO';
 import ProductsCatalog from './ProductsCatalog';
+
+const DEALS_SESSION_KEY = 'lm_deals_banner_dismissed';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,8 +32,22 @@ const itemVariants = {
 };
 
 const Home = () => {
+  const [showDeals, setShowDeals] = useState(
+    () => sessionStorage.getItem(DEALS_SESSION_KEY) !== '1'
+  );
+
+  const handleCloseDeals = () => {
+    sessionStorage.setItem(DEALS_SESSION_KEY, '1');
+    setShowDeals(false);
+  };
+
   return (
     <>
+      <AnimatePresence>
+        {showDeals && (
+          <DealBannerModal onClose={handleCloseDeals} onEmpty={() => setShowDeals(false)} />
+        )}
+      </AnimatePresence>
       <SEO
         title="Inicio"
         description="LM Market - Tu supermercado de confianza. Productos de excelente calidad al mejor precio. Ofertas especiales y atención personalizada."

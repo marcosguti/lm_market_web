@@ -39,11 +39,26 @@ export async function patchOrderLines(
   });
 }
 
-export async function confirmOrderPayment(orderId: string) {
-  return api<{ changes: InventoryChange[]; justConfirmed: boolean; order: OrderEntity }>(
+export interface ConfirmPaymentParams {
+  method: 'cash' | 'zelle' | 'mobilePayment' | 'binance';
+  reference?: string;
+  paidAt?: string;
+  screenshot?: File;
+}
+
+export async function confirmOrderPayment(orderId: string, params: ConfirmPaymentParams) {
+  const formData = new FormData();
+  formData.append('method', params.method);
+  if (params.reference) formData.append('reference', params.reference);
+  if (params.paidAt) formData.append('paidAt', params.paidAt);
+  if (params.screenshot) formData.append('screenshot', params.screenshot);
+
+  return api<{ changes: InventoryChange[]; order: OrderEntity }>(
     `/api/orders/${orderId}/confirm-payment`,
     {
+      body: formData as unknown as string,
       method: 'POST',
+      skipContentType: true,
     }
   );
 }
@@ -69,6 +84,13 @@ export async function getKitchenOrders(page: number = 1, pageSize: number = 20) 
 export async function patchAdminOrderStatus(orderId: string, status: OrderStatus) {
   return api<{ order: OrderEntity }>(`/api/admin/orders/${orderId}/status`, {
     body: JSON.stringify({ status }),
+    method: 'PATCH',
+  });
+}
+
+export async function verifyPayment(orderId: string, verify: boolean) {
+  return api<{ order: OrderEntity }>(`/api/admin/orders/${orderId}/verify-payment`, {
+    body: JSON.stringify({ verify }),
     method: 'PATCH',
   });
 }

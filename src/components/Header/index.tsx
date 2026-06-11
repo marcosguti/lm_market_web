@@ -143,7 +143,7 @@ const Header = () => {
 
       const status = payload.status;
       const shouldDesktop =
-        status === 'preparando' || status === 'listaParaReparto' || status === 'enReparto';
+        status === 'preparing' || status === 'readyForDelivery' || status === 'outForDelivery';
       if (
         shouldDesktop &&
         typeof Notification !== 'undefined' &&
@@ -212,6 +212,14 @@ const Header = () => {
             label: (
               <Link className="no-underline hover:no-underline" to="/productos">
                 Productos
+              </Link>
+            ),
+          },
+          {
+            key: 'ofertas',
+            label: (
+              <Link className="no-underline hover:no-underline" to="/ofertas">
+                Ofertas
               </Link>
             ),
           },

@@ -7,6 +7,7 @@ export type ApiResult<T> = {
 export type ApiOptions = RequestInit & {
   params?: Record<string, string>;
   skipAuth?: boolean;
+  skipContentType?: boolean;
 };
 
 const JSON_CT = 'application/json';
@@ -45,8 +46,9 @@ export function apiUrl(path: string): string {
   return buildHref(path);
 }
 
-function applyJsonContentType(headers: Headers, method: string, body: RequestInit['body']): void {
+function applyJsonContentType(headers: Headers, method: string, body: RequestInit['body'], skipContentType?: boolean): void {
   if (method === 'GET' || method === 'HEAD') return;
+  if (skipContentType) return;
   if (headers.has('Content-Type')) return;
   if (typeof FormData !== 'undefined' && body instanceof FormData) return;
   headers.set('Content-Type', JSON_CT);
@@ -65,11 +67,11 @@ async function parseResponseBody<T>(res: Response): Promise<T> {
 }
 
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<ApiResult<T>> {
-  const { params, skipAuth, ...init } = options;
+  const { params, skipAuth, skipContentType, ...init } = options;
   const href = buildHref(path, params);
   const method = (init.method ?? 'GET').toUpperCase();
   const headers = new Headers(init.headers);
-  applyJsonContentType(headers, method, init.body);
+  applyJsonContentType(headers, method, init.body, skipContentType);
   if (!skipAuth) {
     const token = localStorage.getItem('lm_market_token');
     if (token) headers.set('Authorization', `Bearer ${token}`);
