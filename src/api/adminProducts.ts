@@ -2,25 +2,28 @@ import { api } from './client';
 
 export type AdminProductActiveFilter = 'all' | 'false' | 'true';
 
+export interface ProductStoreEntry {
+  price: number;
+  productId: string;
+  stockQuantity: number;
+  store: { id: string; name: string; externalBranchCode: string };
+  storeId: string;
+}
+
 export interface AdminProduct {
   active: boolean;
-  adminMovements: number | null;
   brand: string;
   brandId?: string;
   code: string;
-  cost: number;
   createdAt: string;
   department: string;
   departmentId?: string;
   description: string | null;
   id: string;
   imageUrl: string | null;
-  initialBalance: number | null;
-  inventoryValueBs: number | null;
-  marginPct: number | null;
   name: string;
   price: number;
-  salesToday: number | null;
+  productStores: ProductStoreEntry[];
   totalStock: number | null;
   updatedAt: string;
 }
@@ -40,7 +43,8 @@ export async function getAdminProducts(
   sort?: '' | 'priceAsc' | 'priceDesc',
   active: AdminProductActiveFilter = 'all',
   brand?: string,
-  department?: string
+  department?: string,
+  storeId?: string
 ) {
   return api<PaginatedAdminProducts>('/api/admin/products', {
     params: {
@@ -51,43 +55,32 @@ export async function getAdminProducts(
       ...(sort === 'priceAsc' || sort === 'priceDesc' ? { sort } : {}),
       ...(brand ? { brand } : {}),
       ...(department ? { department } : {}),
+      ...(storeId ? { storeId } : {}),
     },
   });
 }
 
+export interface StoreEntry { storeId: string; price: number; stockQuantity: number }
+
 export async function createAdminProduct(body: {
   active?: boolean;
-  adminMovements?: number;
   brand: string;
   code: string;
-  cost: number | string;
   department: string;
   description?: string;
   imageFile?: File;
-  initialBalance?: number;
-  inventoryValueBs?: number | string;
-  marginPct?: number | string;
   name: string;
-  price: number | string;
-  salesToday?: number;
-  totalStock?: number;
+  stores: StoreEntry[];
 }) {
   const formData = new FormData();
   formData.append('active', String(body.active ?? true));
-  if (body.adminMovements !== undefined) formData.append('adminMovements', String(body.adminMovements));
   formData.append('brand', body.brand);
   formData.append('code', body.code);
-  formData.append('cost', String(body.cost));
   formData.append('department', body.department);
   if (body.description) formData.append('description', body.description);
   if (body.imageFile) formData.append('imageUrl', body.imageFile);
-  if (body.initialBalance !== undefined) formData.append('initialBalance', String(body.initialBalance));
-  if (body.inventoryValueBs !== undefined) formData.append('inventoryValueBs', String(body.inventoryValueBs));
-  if (body.marginPct !== undefined) formData.append('marginPct', String(body.marginPct));
   formData.append('name', body.name);
-  formData.append('price', String(body.price));
-  if (body.salesToday !== undefined) formData.append('salesToday', String(body.salesToday));
-  if (body.totalStock !== undefined) formData.append('totalStock', String(body.totalStock));
+  formData.append('stores', JSON.stringify(body.stores));
 
   return api<{ product: AdminProduct }>('/api/admin/products', {
     body: formData,
@@ -97,13 +90,20 @@ export async function createAdminProduct(body: {
 
 export async function patchAdminProduct(
   id: string,
-  body: Partial<{ brand: string; department: string; description: string; imageFile: File }>
+  body: Partial<{
+    brand: string;
+    department: string;
+    description: string;
+    imageFile: File;
+    stores: StoreEntry[];
+  }>
 ) {
   const formData = new FormData();
   if (body.brand !== undefined) formData.append('brand', body.brand);
   if (body.department !== undefined) formData.append('department', body.department);
   if (body.description !== undefined) formData.append('description', body.description);
   if (body.imageFile) formData.append('imageUrl', body.imageFile);
+  if (body.stores !== undefined) formData.append('stores', JSON.stringify(body.stores));
 
   return api<{ product: AdminProduct }>(`/api/admin/products/${id}`, {
     body: formData,

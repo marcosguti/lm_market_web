@@ -9,6 +9,7 @@ import {
   Input,
   InputNumber,
   message,
+  Modal,
   Pagination,
   Select,
   Spin,
@@ -20,6 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { type CatalogFilterItem, fetchBrands, fetchDepartments } from '../../../api/catalog';
 import { api } from '../../../api/client';
+import { getStores, type Store } from '../../../api/stores';
 import { useCart } from '../../../context/CartContext';
 import { theme } from '../../../theme';
 import { CatalogSidebar } from './CatalogSidebar';
@@ -93,8 +95,7 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
             <Image
               alt={p.name}
               className="max-h-[160px] object-cover"
-              src={p.imageUrl}
-              loadingProps={{ lazy: true }}
+              src={p.imageUrl ?? undefined}
             />
             <div className="absolute left-0 top-0 h-[4px] w-full" />
           </div>
@@ -164,6 +165,9 @@ const ProductsCatalog = () => {
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ProductsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+  const { cart: cartItems, clearCart } = useCart();
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -191,9 +195,11 @@ const ProductsCatalog = () => {
 
   useEffect(() => {
     void (async () => {
-      const [b, d] = await Promise.all([fetchBrands(), fetchDepartments()]);
+      const [b, d, s] = await Promise.all([fetchBrands(), fetchDepartments(), getStores()]);
       setBrands(b);
       setDepartments(d);
+      setStores(s);
+      if (s.length > 0) setSelectedStoreId(s[0].id);
     })();
   }, []);
 
@@ -210,6 +216,7 @@ const ProductsCatalog = () => {
     if (selectedDepartmentId) params.department = selectedDepartmentId;
     if (debouncedPriceRange[0] > 0) params.minPrice = String(debouncedPriceRange[0]);
     if (debouncedPriceRange[1] < 50) params.maxPrice = String(debouncedPriceRange[1]);
+    if (selectedStoreId) params.storeId = selectedStoreId;
     try {
       const { data, ok, status } = await api<ProductsResponse>('/api/products', {
         skipAuth: true,
@@ -244,6 +251,7 @@ const ProductsCatalog = () => {
     selectedBrandId,
     selectedDepartmentId,
     debouncedPriceRange,
+    selectedStoreId,
   ]);
 
   useEffect(() => {
@@ -262,6 +270,25 @@ const ProductsCatalog = () => {
     setSelectedDepartmentId(id);
     setPage(1);
     setFiltersDrawerOpen(false);
+  };
+
+  const handleStoreChange = (storeId: string) => {
+    if (cartItems.length > 0) {
+      Modal.confirm({
+        title: '¿Cambiar de tienda?',
+        content: 'Esto vaciará tu carrito.',
+        okText: 'Sí, cambiar',
+        cancelText: 'Cancelar',
+        onOk: () => {
+          clearCart();
+          setSelectedStoreId(storeId);
+          setPage(1);
+        },
+      });
+    } else {
+      setSelectedStoreId(storeId);
+      setPage(1);
+    }
   };
 
   const handleClearFilters = () => {
@@ -290,7 +317,9 @@ const ProductsCatalog = () => {
     priceRange: sliderValue,
     onSelectBrand: handleSelectBrand,
     onSelectDepartment: handleSelectDepartment,
-    onPriceRangeChange: setSliderValue,
+    onPriceRangeChange: (v: number | number[]) => {
+      if (Array.isArray(v)) setSliderValue(v as [number, number]);
+    },
     onClear: handleClearFilters,
   };
 
@@ -342,6 +371,14 @@ const ProductsCatalog = () => {
                   className="[&_.ant-input-affix-wrapper]:rounded-xl [&_.ant-input-affix-wrapper]:border-gray-200 [&_.ant-input-affix-wrapper]:shadow-sm"
                 />
               </div>
+              <Select
+                className="w-full min-w-[160px] sm:w-[200px]"
+                options={stores.map((s) => ({ label: s.name, value: s.id }))}
+                placeholder="Tienda"
+                size="large"
+                value={selectedStoreId || undefined}
+                onChange={handleStoreChange}
+              />
               <Select
                 className="w-full min-w-[200px] sm:w-[240px]"
                 options={SORT_OPTIONS}

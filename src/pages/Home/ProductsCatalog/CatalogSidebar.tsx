@@ -11,7 +11,7 @@ type CatalogSidebarProps = {
   priceRange: [number, number];
   onSelectBrand: (id: string | null) => void;
   onSelectDepartment: (id: string | null) => void;
-  onPriceRangeChange: (v: [number, number]) => void;
+  onPriceRangeChange: (v: number | number[]) => void;
   onClear: () => void;
 };
 
@@ -90,7 +90,7 @@ function PriceRangeSection({
   onPriceRangeChange,
 }: {
   priceRange: [number, number];
-  onPriceRangeChange: (v: [number, number]) => void;
+  onPriceRangeChange: (v: number | number[]) => void;
 }) {
   return (
     <div className="mb-[24px] overflow-x-hidden rounded-2xl border border-gray-200/80 bg-white/90 p-[20px] shadow-sm backdrop-blur-sm last:mb-0">

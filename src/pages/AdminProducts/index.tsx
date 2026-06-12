@@ -12,6 +12,7 @@ import {
   Select,
   Space,
   Switch,
+  Tabs,
   Table,
   Tag,
   Typography,
@@ -27,6 +28,7 @@ import {
   getAdminProducts,
   patchAdminProduct,
 } from '../../api/adminProducts';
+import { getStores, type Store } from '../../api/stores';
 
 const { Title } = Typography;
 
@@ -49,6 +51,8 @@ const AdminProducts = () => {
   const [searchInput, setSearchInput] = useState('');
   const [sort, setSort] = useState<'' | 'priceAsc' | 'priceDesc'>('');
   const [activeFilter, setActiveFilter] = useState<AdminProductActiveFilter>('all');
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -63,7 +67,7 @@ const AdminProducts = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await getAdminProducts(page, pageSize, search || undefined, sort, activeFilter);
+    const res = await getAdminProducts(page, pageSize, search || undefined, sort, activeFilter, undefined, undefined, selectedStoreId || undefined);
     setLoading(false);
     if (!res.ok || !res.data?.data) {
       void message.error((res.data as { error?: string })?.error ?? 'Error al cargar productos');
@@ -71,7 +75,15 @@ const AdminProducts = () => {
     }
     setData(res.data.data);
     setTotal(res.data.total);
-  }, [page, pageSize, search, sort, activeFilter]);
+  }, [page, pageSize, search, sort, activeFilter, selectedStoreId]);
+
+  useEffect(() => {
+    void (async () => {
+      const s = await getStores();
+      setStores(s);
+      if (s.length > 0) setSelectedStoreId(s[0].id);
+    })();
+  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -81,13 +93,8 @@ const AdminProducts = () => {
 
   const openCreate = () => {
     createForm.resetFields();
-    createForm.setFieldsValue({
-      active: true,
-      adminMovements: 0,
-      initialBalance: 0,
-      salesToday: 0,
-      totalStock: 0,
-    });
+    const defaultStores = stores.map((s) => ({ storeId: s.id, price: 0, stockQuantity: 0 }));
+    createForm.setFieldsValue({ active: true, stores: defaultStores });
     setCreateImageFile(null);
     setCreateImagePreview('');
     setCreateOpen(true);
@@ -98,20 +105,13 @@ const AdminProducts = () => {
     if (!values) return;
     const res = await createAdminProduct({
       active: values.active,
-      adminMovements: values.adminMovements ?? undefined,
       brand: values.brand,
       code: values.code,
-      cost: values.cost,
       department: values.department,
       description: values.description || undefined,
       imageFile: createImageFile ?? undefined,
-      initialBalance: values.initialBalance ?? undefined,
-      inventoryValueBs: values.inventoryValueBs ?? undefined,
-      marginPct: values.marginPct ?? undefined,
       name: values.name,
-      price: values.price,
-      salesToday: values.salesToday ?? undefined,
-      totalStock: values.totalStock ?? undefined,
+      stores: values.stores ?? [],
     });
     if (!res.ok) {
       void message.error((res.data as { error?: string })?.error ?? 'No se pudo crear');
@@ -124,9 +124,18 @@ const AdminProducts = () => {
 
   const openEdit = (row: AdminProduct) => {
     setEditing(row);
+    const storeEntries = stores.map((s) => {
+      const existing = row.productStores.find((ps) => ps.storeId === s.id);
+      return {
+        storeId: s.id,
+        price: existing ? existing.price : 0,
+        stockQuantity: existing ? existing.stockQuantity : 0,
+      };
+    });
     editForm.setFieldsValue({
       brand: row.brand,
       description: row.description ?? '',
+      stores: storeEntries,
     });
     setEditImageFile(null);
     setEditImagePreview('');
@@ -140,7 +149,8 @@ const AdminProducts = () => {
     const res = await patchAdminProduct(editing.id, {
       brand: values.brand,
       description: values.description ?? '',
-      imageFile: editImageFile,
+      imageFile: editImageFile ?? undefined,
+      stores: values.stores ?? [],
     });
     if (!res.ok) {
       void message.error((res.data as { error?: string })?.error ?? 'No se pudo guardar');
@@ -253,6 +263,17 @@ const AdminProducts = () => {
               setPage(1);
             }}
           />
+          <Select
+            allowClear
+            options={[{ label: 'Todas', value: '' }, ...stores.map((s) => ({ label: s.name, value: s.id }))]}
+            placeholder="Tienda"
+            style={{ width: 160 }}
+            value={selectedStoreId || undefined}
+            onChange={(v) => {
+              setSelectedStoreId(v ?? '');
+              setPage(1);
+            }}
+          />
           <Input.Search
             allowClear
             enterButton="Buscar"
@@ -299,90 +320,111 @@ const AdminProducts = () => {
         width={640}
       >
         <Form form={createForm} layout="vertical">
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <Form.Item label="Código interno" name="code" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="Nombre" name="name" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="Marca" name="brand" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="Departamento" name="department" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="Precio" name="price" rules={[{ required: true }]}>
-              <InputNumber className="w-full" min={0} precision={2} step={0.01} />
-            </Form.Item>
-            <Form.Item label="Costo" name="cost" rules={[{ required: true }]}>
-              <InputNumber className="w-full" min={0} precision={2} step={0.01} />
-            </Form.Item>
-            <Form.Item label="Stock total" name="totalStock">
-              <InputNumber className="w-full" min={0} precision={0} />
-            </Form.Item>
-            <Form.Item label="Saldo inicial" name="initialBalance">
-              <InputNumber className="w-full" min={0} precision={0} />
-            </Form.Item>
-            <Form.Item label="Ventas hoy" name="salesToday">
-              <InputNumber className="w-full" min={0} precision={0} />
-            </Form.Item>
-            <Form.Item label="Movimientos admin" name="adminMovements">
-              <InputNumber className="w-full" min={0} precision={0} />
-            </Form.Item>
-            <Form.Item label="Margen %" name="marginPct">
-              <InputNumber className="w-full" min={0} precision={2} step={0.01} />
-            </Form.Item>
-            <Form.Item label="Valor inventario Bs" name="inventoryValueBs">
-              <InputNumber className="w-full" min={0} precision={2} step={0.01} />
-            </Form.Item>
-          </div>
-          <Form.Item label="Descripción" name="description">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-          <Form.Item label={`Imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
-            <Upload
-              accept={IMAGE_ACCEPT}
-              beforeUpload={(file) => {
-                if (file.size > MAX_SIZE_KB * 1024) {
-                  void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
-                  return Upload.LIST_IGNORE;
-                }
-                setCreateImageFile(file);
-                setCreateImagePreview(URL.createObjectURL(file));
-                return false;
-              }}
-              maxCount={1}
-              onRemove={() => {
-                setCreateImageFile(null);
-                setCreateImagePreview('');
-              }}
-              fileList={
-                createImagePreview
-                  ? [
-                      {
-                        uid: '-1',
-                        name: 'imagen',
-                        status: 'done',
-                        url: createImagePreview,
-                      },
-                    ]
-                  : []
-              }
-              listType="picture"
-              showUploadList={{ showPreviewIcon: false }}
-            >
-              <Button icon={<UploadOutlined />}>Seleccionar imagen</Button>
-            </Upload>
-            {createImagePreview && (
-              <div className="mt-2">
-                <Image height={80} src={createImagePreview} />
-              </div>
-            )}
-          </Form.Item>
-          <Form.Item label="Activo en catálogo" name="active" valuePropName="checked">
-            <Switch />
-          </Form.Item>
+          <Tabs
+            defaultActiveKey="general"
+            items={[
+              {
+                key: 'general',
+                label: 'General',
+                children: (
+                  <>
+                    <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                      <Form.Item label="Código interno" name="code" rules={[{ required: true }]}>
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="Nombre" name="name" rules={[{ required: true }]}>
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="Marca" name="brand" rules={[{ required: true }]}>
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="Departamento" name="department" rules={[{ required: true }]}>
+                        <Input />
+                      </Form.Item>
+                    </div>
+                    <Form.Item label="Descripción" name="description">
+                      <Input.TextArea rows={2} />
+                    </Form.Item>
+                    <Form.Item label={`Imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
+                      <Upload
+                        accept={IMAGE_ACCEPT}
+                        beforeUpload={(file) => {
+                          if (file.size > MAX_SIZE_KB * 1024) {
+                            void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
+                            return Upload.LIST_IGNORE;
+                          }
+                          setCreateImageFile(file);
+                          setCreateImagePreview(URL.createObjectURL(file));
+                          return false;
+                        }}
+                        maxCount={1}
+                        onRemove={() => {
+                          setCreateImageFile(null);
+                          setCreateImagePreview('');
+                        }}
+                        fileList={
+                          createImagePreview
+                            ? [
+                                {
+                                  uid: '-1',
+                                  name: 'imagen',
+                                  status: 'done',
+                                  url: createImagePreview,
+                                },
+                              ]
+                            : []
+                        }
+                        listType="picture"
+                        showUploadList={{ showPreviewIcon: false }}
+                      >
+                        <Button icon={<UploadOutlined />}>Seleccionar imagen</Button>
+                      </Upload>
+                      {createImagePreview && (
+                        <div className="mt-2">
+                          <Image height={80} src={createImagePreview} />
+                        </div>
+                      )}
+                    </Form.Item>
+                    <Form.Item label="Activo en catálogo" name="active" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                  </>
+                ),
+              },
+              {
+                key: 'stores',
+                label: 'Precios por tienda',
+                children: (
+                  <div className="py-2">
+                    <p className="mb-4 text-sm text-gray-500">
+                      Establece el precio y stock para cada tienda. Deja en 0 si no aplica.
+                    </p>
+                    <Form.List name="stores">
+                      {(fields) =>
+                        fields.map((field) => {
+                          const storeName = stores[field.name]?.name ?? `Tienda ${field.name + 1}`;
+                          return (
+                            <div
+                              key={field.key}
+                              className="mb-4 grid grid-cols-3 items-end gap-3 rounded-lg border border-gray-100 p-3"
+                            >
+                              <div className="col-span-1 font-medium text-gray-700">{storeName}</div>
+                              <Form.Item name={[field.name, 'price']} className="mb-0">
+                                <InputNumber className="w-full" min={0} precision={2} placeholder="Precio (Bs)" />
+                              </Form.Item>
+                              <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
+                                <InputNumber className="w-full" min={0} precision={0} placeholder="Stock" />
+                              </Form.Item>
+                            </div>
+                          );
+                        })
+                      }
+                    </Form.List>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </Form>
       </Modal>
 
@@ -395,62 +437,106 @@ const AdminProducts = () => {
         }}
         onOk={() => void submitEdit()}
         open={editOpen}
-        title="Editar producto (solo marca, descripción e imagen)"
-        width={520}
+        title="Editar producto"
+        width={560}
       >
         <p className="mb-4 text-sm text-gray-500">
           {editing ? `${editing.name} · ${editing.code}` : null}
         </p>
         <Form form={editForm} layout="vertical">
-          <Form.Item label="Marca" name="brand" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="Descripción" name="description">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <Form.Item label={`Nueva imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
-            <Upload
-              accept={IMAGE_ACCEPT}
-              beforeUpload={(file) => {
-                if (file.size > MAX_SIZE_KB * 1024) {
-                  void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
-                  return Upload.LIST_IGNORE;
-                }
-                setEditImageFile(file);
-                setEditImagePreview(URL.createObjectURL(file));
-                return false;
-              }}
-              maxCount={1}
-              onRemove={() => {
-                setEditImageFile(null);
-                setEditImagePreview('');
-              }}
-              fileList={
-                editImagePreview || editing?.imageUrl
-                  ? [
-                      {
-                        uid: '-1',
-                        name: 'imagen',
-                        status: 'done',
-                        url: editImagePreview || editing?.imageUrl,
-                      },
-                    ]
-                  : []
-              }
-              listType="picture"
-              showUploadList={{ showPreviewIcon: false }}
-            >
-              <Button icon={<UploadOutlined />}>Cambiar imagen</Button>
-            </Upload>
-            {(editImagePreview || editing?.imageUrl) && (
-              <div className="mt-2">
-                <Image height={80} src={editImagePreview || editing?.imageUrl} />
-                {editImagePreview && (
-                  <span className="ml-2 text-xs text-gray-500">Nueva imagen</span>
-                )}
-              </div>
-            )}
-          </Form.Item>
+          <Tabs
+            defaultActiveKey="general"
+            items={[
+              {
+                key: 'general',
+                label: 'General',
+                children: (
+                  <>
+                    <Form.Item label="Marca" name="brand" rules={[{ required: true }]}>
+                      <Input />
+                    </Form.Item>
+                    <Form.Item label="Descripción" name="description">
+                      <Input.TextArea rows={3} />
+                    </Form.Item>
+                    <Form.Item label={`Nueva imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
+                      <Upload
+                        accept={IMAGE_ACCEPT}
+                        beforeUpload={(file) => {
+                          if (file.size > MAX_SIZE_KB * 1024) {
+                            void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
+                            return Upload.LIST_IGNORE;
+                          }
+                          setEditImageFile(file);
+                          setEditImagePreview(URL.createObjectURL(file));
+                          return false;
+                        }}
+                        maxCount={1}
+                        onRemove={() => {
+                          setEditImageFile(null);
+                          setEditImagePreview('');
+                        }}
+                        fileList={
+                          editImagePreview || editing?.imageUrl
+                            ? [
+                                {
+                                  uid: '-1',
+                                  name: 'imagen',
+                                  status: 'done',
+                                  url: editImagePreview || editing?.imageUrl || undefined,
+                                },
+                              ]
+                            : []
+                        }
+                        listType="picture"
+                        showUploadList={{ showPreviewIcon: false }}
+                      >
+                        <Button icon={<UploadOutlined />}>Cambiar imagen</Button>
+                      </Upload>
+                      {(editImagePreview || editing?.imageUrl) && (
+                        <div className="mt-2">
+                          <Image height={80} src={editImagePreview || editing?.imageUrl || ''} />
+                          {editImagePreview && (
+                            <span className="ml-2 text-xs text-gray-500">Nueva imagen</span>
+                          )}
+                        </div>
+                      )}
+                    </Form.Item>
+                  </>
+                ),
+              },
+              {
+                key: 'stores',
+                label: 'Precios por tienda',
+                children: (
+                  <div className="py-2">
+                    <p className="mb-4 text-sm text-gray-500">
+                      Actualiza el precio y stock para cada tienda.
+                    </p>
+                    <Form.List name="stores">
+                      {(fields) =>
+                        fields.map((field) => (
+                          <div
+                            key={field.key}
+                            className="mb-4 grid grid-cols-3 items-end gap-3 rounded-lg border border-gray-100 p-3"
+                          >
+                            <div className="col-span-1 font-medium text-gray-700">
+                              {stores[field.name]?.name ?? `Tienda ${field.name + 1}`}
+                            </div>
+                            <Form.Item name={[field.name, 'price']} className="mb-0">
+                              <InputNumber className="w-full" min={0} precision={2} placeholder="Precio (Bs)" />
+                            </Form.Item>
+                            <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
+                              <InputNumber className="w-full" min={0} precision={0} placeholder="Stock" />
+                            </Form.Item>
+                          </div>
+                        ))
+                      }
+                    </Form.List>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </Form>
       </Modal>
     </div>
