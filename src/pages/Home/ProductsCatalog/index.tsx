@@ -283,6 +283,7 @@ const ProductsCatalog = () => {
           clearCart();
           setSelectedStoreId(storeId);
           setPage(1);
+          load();
         },
       });
     } else {

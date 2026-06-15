@@ -56,7 +56,7 @@ const DealBannerModal = ({ onClose, onEmpty }: DealBannerModalProps) => {
       onClick={onClose}
     >
       <div
-        className="relative flex w-full max-w-3xl flex-col items-center"
+        className="relative flex w-[min(calc(100%-2rem),calc(85vh*9/16))] flex-col items-center"
         onClick={(e) => e.stopPropagation()}
       >
         <Button
@@ -68,7 +68,7 @@ const DealBannerModal = ({ onClose, onEmpty }: DealBannerModalProps) => {
         />
 
         <div className="relative w-full overflow-hidden rounded-lg shadow-2xl">
-          <div className="relative min-h-[300px] w-full sm:min-h-[400px]">
+          <div className="relative aspect-[9/16] w-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentIndex}
@@ -80,7 +80,7 @@ const DealBannerModal = ({ onClose, onEmpty }: DealBannerModalProps) => {
               >
                 <img
                   alt={`Oferta ${currentIndex + 1}`}
-                  className="h-full w-full object-contain sm:object-cover"
+                  className="block h-full w-full object-cover object-center"
                   src={images[currentIndex]}
                 />
               </motion.div>

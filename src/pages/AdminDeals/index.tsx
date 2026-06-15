@@ -27,11 +27,36 @@ import {
   getAdminDeals,
   patchAdminDeal,
 } from '../../api/deals';
+import {
+  DEAL_IMAGE_MIN_HEIGHT,
+  DEAL_IMAGE_MIN_WIDTH,
+  validateDealImage,
+} from '../../utils/dealImageValidation';
 
 const { Title } = Typography;
 
 const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 const MAX_SIZE_KB = 1024;
+const DEAL_IMAGE_LABEL = `Imagen vertical 9:16, mínimo ${DEAL_IMAGE_MIN_WIDTH}x${DEAL_IMAGE_MIN_HEIGHT}px, máx ${MAX_SIZE_KB}KB (jpg, png, webp)`;
+
+const handleDealImageUpload = async (
+  file: File,
+  onValid: (file: File, previewUrl: string) => void
+): Promise<typeof Upload.LIST_IGNORE | false> => {
+  if (file.size > MAX_SIZE_KB * 1024) {
+    void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
+    return Upload.LIST_IGNORE;
+  }
+
+  try {
+    await validateDealImage(file);
+    onValid(file, URL.createObjectURL(file));
+    return false;
+  } catch (error) {
+    void message.error(error instanceof Error ? error.message : 'Imagen inválida');
+    return Upload.LIST_IGNORE;
+  }
+};
 
 const disableBeforeToday = (current: Dayjs) =>
   !!current && current.startOf('day').isBefore(dayjs().startOf('day'));
@@ -295,18 +320,15 @@ const AdminDeals = () => {
         width={560}
       >
         <Form form={createForm} layout="vertical">
-          <Form.Item label={`Imagen del banner (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
+          <Form.Item label={DEAL_IMAGE_LABEL}>
             <Upload
               accept={IMAGE_ACCEPT}
-              beforeUpload={(file) => {
-                if (file.size > MAX_SIZE_KB * 1024) {
-                  void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
-                  return Upload.LIST_IGNORE;
-                }
-                setCreateImageFile(file);
-                setCreateImagePreview(URL.createObjectURL(file));
-                return false;
-              }}
+              beforeUpload={(file) =>
+                handleDealImageUpload(file, (validFile, previewUrl) => {
+                  setCreateImageFile(validFile);
+                  setCreateImagePreview(previewUrl);
+                })
+              }
               maxCount={1}
               onRemove={() => {
                 setCreateImageFile(null);
@@ -330,13 +352,14 @@ const AdminDeals = () => {
               <Button icon={<UploadOutlined />}>Seleccionar imagen</Button>
             </Upload>
             {createImagePreview && (
-              <div className="mt-2">
-                <Image
-                  height={120}
-                  src={createImagePreview}
-                  style={{ objectFit: 'cover' }}
-                  width="100%"
-                />
+              <div className="mx-auto mt-2 w-full max-w-[180px] overflow-hidden rounded-lg">
+                <div className="relative aspect-[9/16] w-full">
+                  <img
+                    alt="Vista previa del banner"
+                    className="block h-full w-full object-cover object-center"
+                    src={createImagePreview}
+                  />
+                </div>
               </div>
             )}
           </Form.Item>
@@ -369,7 +392,7 @@ const AdminDeals = () => {
               />
             </Form.Item>
           </div>
-          <Form.Item label="Descripción (opcional, máx 300 caracteres)" name="description">
+          <Form.Item label="Descripción (opcional, máx 300 caracteres)" name="description" rules={[{ max: 300, message: 'Máximo 300 caracteres' }]}>
             <Input.TextArea maxLength={300} rows={2} showCount />
           </Form.Item>
           <Form.Item label="Activa" name="active" valuePropName="checked">
@@ -393,28 +416,27 @@ const AdminDeals = () => {
         {editing?.imageUrl && (
           <div className="mb-4">
             <span className="text-sm text-gray-500">Imagen actual:</span>
-            <Image
-              className="mt-1"
-              height={80}
-              src={editing.imageUrl}
-              style={{ objectFit: 'cover' }}
-              width="100%"
-            />
+            <div className="mx-auto mt-1 w-full max-w-[180px] overflow-hidden rounded-lg">
+              <div className="relative aspect-[9/16] w-full">
+                <img
+                  alt="Imagen actual del banner"
+                  className="block h-full w-full object-cover object-center"
+                  src={editing.imageUrl}
+                />
+              </div>
+            </div>
           </div>
         )}
         <Form form={editForm} layout="vertical">
-          <Form.Item label={`Nueva imagen (jpg, png, webp - máx ${MAX_SIZE_KB}KB)`}>
+          <Form.Item label={DEAL_IMAGE_LABEL}>
             <Upload
               accept={IMAGE_ACCEPT}
-              beforeUpload={(file) => {
-                if (file.size > MAX_SIZE_KB * 1024) {
-                  void message.error(`La imagen debe ser menor a ${MAX_SIZE_KB}KB`);
-                  return Upload.LIST_IGNORE;
-                }
-                setEditImageFile(file);
-                setEditImagePreview(URL.createObjectURL(file));
-                return false;
-              }}
+              beforeUpload={(file) =>
+                handleDealImageUpload(file, (validFile, previewUrl) => {
+                  setEditImageFile(validFile);
+                  setEditImagePreview(previewUrl);
+                })
+              }
               maxCount={1}
               onRemove={() => {
                 setEditImageFile(null);
@@ -438,13 +460,14 @@ const AdminDeals = () => {
               <Button icon={<UploadOutlined />}>Cambiar imagen</Button>
             </Upload>
             {editImagePreview && (
-              <div className="mt-2">
-                <Image
-                  height={80}
-                  src={editImagePreview}
-                  style={{ objectFit: 'cover' }}
-                  width="100%"
-                />
+              <div className="mx-auto mt-2 w-full max-w-[180px] overflow-hidden rounded-lg">
+                <div className="relative aspect-[9/16] w-full">
+                  <img
+                    alt="Vista previa del banner"
+                    className="block h-full w-full object-cover object-center"
+                    src={editImagePreview}
+                  />
+                </div>
               </div>
             )}
           </Form.Item>
@@ -477,7 +500,7 @@ const AdminDeals = () => {
               />
             </Form.Item>
           </div>
-          <Form.Item label="Descripción (opcional, máx 300 caracteres)" name="description">
+          <Form.Item label="Descripción (opcional, máx 300 caracteres)" name="description" rules={[{ max: 300, message: 'Máximo 300 caracteres' }]}>
             <Input.TextArea maxLength={300} rows={2} showCount />
           </Form.Item>
           <Form.Item label="Activa" name="active" valuePropName="checked">

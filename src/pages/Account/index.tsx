@@ -154,7 +154,8 @@ const Account = () => {
               name="newPassword"
               rules={[
                 { required: true, message: 'Requerido' },
-                { min: 6, message: 'Mínimo 6 caracteres' },
+                { min: 8, message: 'Mínimo 8 caracteres' },
+                { pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, message: 'Debe incluir mayúsculas, minúsculas y números' },
               ]}
             >
               <Input.Password />
