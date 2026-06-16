@@ -20,48 +20,67 @@
     <link rel="canonical" href="https://www.lmmarket.com" />
     <title>LM Market - Calidad al mejor precio</title>
     <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #97bd11;
+      }
       #initial-loader-container {
-        width: 100vw;
-        height: 100vh;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
         display: flex;
-        left: 0;
-        top: 0;
         justify-content: center;
         align-items: center;
-        flex-direction: column;
         background-color: #97bd11;
       }
       .initial-loader {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1.5rem;
+        position: relative;
+        flex-shrink: 0;
+        width: 170px;
+        height: 170px;
+        max-width: none;
+        max-height: none;
       }
       .initial-loader-logo-wrapper {
-        position: relative;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 150px;
+        height: 150px;
+        max-width: none;
+        max-height: none;
+        border-radius: 50%;
+        background-color: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 9rem;
-        height: 9rem;
-        border-radius: 9999px;
-        background-color: #ffffff;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        z-index: 1;
       }
       .initial-loader-logo {
-        height: 5rem;
+        height: 110px;
         width: auto;
+        max-width: none;
       }
       .initial-loader-spinner {
         position: absolute;
-        inset: -0.45rem;
-        width: 100%;
-        height: 100%;
-        border-radius: 9999px;
-        border-width: 5px;
-        border-style: solid;
-        border-color: rgba(255, 255, 255, 0.95) transparent rgba(255, 255, 255, 0.45) transparent;
-        animation: initial-loader-spin 0.95s linear infinite;
+        top: 0;
+        left: 0;
+        width: 170px;
+        height: 170px;
+        max-width: none;
+        max-height: none;
+        box-sizing: border-box;
+        border-radius: 50%;
+        border: 6px solid rgba(255, 255, 255, 0.4);
+        border-top-color: rgba(255, 255, 255, 0.95);
+        border-right-color: rgba(255, 255, 255, 0.7);
+        animation: initial-loader-spin 1.1s linear infinite;
+        pointer-events: none;
       }
       @keyframes initial-loader-spin {
         to {
@@ -73,9 +92,9 @@
   <body>
     <div id="initial-loader-container">
       <div class="initial-loader">
+        <div class="initial-loader-spinner" aria-hidden="true"></div>
         <div class="initial-loader-logo-wrapper">
           <img src="/logo.png" alt="LM Market" class="initial-loader-logo" />
-          <div class="initial-loader-spinner"></div>
         </div>
       </div>
     </div>
