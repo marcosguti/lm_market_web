@@ -10,6 +10,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import About from './pages/About';
 import Account from './pages/Account';
+import AdminBanners from './pages/AdminBanners';
 import AdminDeals from './pages/AdminDeals';
 import AdminOrdersPage from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
@@ -110,6 +111,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
                         <AdminDeals />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/banners"
+                    element={
+                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                        <AdminBanners />
                       </ProtectedRoute>
                     }
                   />

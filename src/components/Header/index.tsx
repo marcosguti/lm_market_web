@@ -223,6 +223,14 @@ const Header = () => {
               </Link>
             ),
           },
+          {
+            key: 'banners',
+            label: (
+              <Link className="no-underline hover:no-underline" to="/banners">
+                Banners
+              </Link>
+            ),
+          },
         ]
       : []),
     ...(user?.type === 'deliveryDriver'

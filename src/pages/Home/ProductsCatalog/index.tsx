@@ -12,6 +12,7 @@ import {
   Modal,
   Pagination,
   Select,
+  Skeleton,
   Spin,
   Tag,
 } from 'antd';
@@ -25,6 +26,11 @@ import { getStores, type Store } from '../../../api/stores';
 import { useCart } from '../../../context/CartContext';
 import { theme } from '../../../theme';
 import { CatalogSidebar } from './CatalogSidebar';
+
+type ProductsCatalogProps = {
+  externalDepartments?: CatalogFilterItem[];
+  initialDepartmentId?: string | null;
+};
 
 type ProductRow = {
   id: string;
@@ -55,6 +61,39 @@ const SORT_OPTIONS: { label: string; value: SortParam }[] = [
   { label: 'Precio: menor a mayor', value: 'priceAsc' },
   { label: 'Precio: mayor a menor', value: 'priceDesc' },
 ];
+
+const PRODUCT_IMAGE_HEIGHT = 180;
+const PRODUCT_IMAGE_MAX_HEIGHT = 160;
+
+function CatalogProductImage({ alt, src }: { alt: string; src: string }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div
+      className="relative flex w-full items-center justify-center overflow-hidden bg-white"
+      style={{ height: PRODUCT_IMAGE_HEIGHT }}
+    >
+      {!loaded ? (
+        <Skeleton.Image
+          active
+          className="!absolute !inset-0 !flex !h-full !w-full !items-center !justify-center !rounded-none [&_.ant-skeleton-image-svg]:!h-[48px] [&_.ant-skeleton-image-svg]:!w-[48px] [&_.ant-skeleton-image]:!h-full [&_.ant-skeleton-image]:!w-full"
+        />
+      ) : null}
+      <Image
+        alt={alt}
+        className={`object-cover transition-opacity duration-300 ${
+          loaded ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        preview={false}
+        src={src}
+        style={{ maxHeight: PRODUCT_IMAGE_MAX_HEIGHT }}
+        onError={() => setLoaded(true)}
+        onLoad={() => setLoaded(true)}
+      />
+      <div className="absolute left-0 top-0 h-[4px] w-full" />
+    </div>
+  );
+}
 
 function CatalogProductCard({ p }: { p: ProductRow }) {
   const { addToCart } = useCart();
@@ -91,18 +130,11 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
     >
       <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100/90 bg-white/90 shadow-md ring-1 ring-black/[0.03] backdrop-blur-sm transition-all duration-300 hover:-translate-y-[4px] hover:shadow-xl hover:ring-primary/20">
         {p.imageUrl ? (
-          <div className="relative flex h-[180px] w-full items-center justify-center overflow-hidden bg-white">
-            <Image
-              alt={p.name}
-              className="max-h-[160px] object-cover"
-              src={p.imageUrl ?? undefined}
-            />
-            <div className="absolute left-0 top-0 h-[4px] w-full" />
-          </div>
+          <CatalogProductImage key={p.imageUrl} alt={p.name} src={p.imageUrl} />
         ) : (
           <div
             className="relative flex w-full items-center justify-center"
-            style={{ height: '180px' }}
+            style={{ height: PRODUCT_IMAGE_HEIGHT }}
           >
             <span className="text-5xl text-white/70"></span>
           </div>
@@ -148,7 +180,10 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
   );
 }
 
-const ProductsCatalog = () => {
+const ProductsCatalog = ({
+  externalDepartments,
+  initialDepartmentId,
+}: ProductsCatalogProps = {}) => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -160,7 +195,7 @@ const ProductsCatalog = () => {
   const [sliderValue, setSliderValue] = useState<[number, number]>([0, 50]);
   const [debouncedPriceRange, setDebouncedPriceRange] = useState<[number, number]>([0, 50]);
   const [brands, setBrands] = useState<CatalogFilterItem[]>([]);
-  const [departments, setDepartments] = useState<CatalogFilterItem[]>([]);
+  const [departments, setDepartments] = useState<CatalogFilterItem[]>(externalDepartments ?? []);
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ProductsResponse | null>(null);
@@ -195,13 +230,26 @@ const ProductsCatalog = () => {
 
   useEffect(() => {
     void (async () => {
-      const [b, d, s] = await Promise.all([fetchBrands(), fetchDepartments(), getStores()]);
+      const [b, s] = await Promise.all([fetchBrands(), getStores()]);
       setBrands(b);
-      setDepartments(d);
       setStores(s);
       if (s.length > 0) setSelectedStoreId(s[0].id);
     })();
   }, []);
+
+  useEffect(() => {
+    if (externalDepartments) return;
+    void (async () => {
+      const d = await fetchDepartments();
+      setDepartments(d);
+    })();
+  }, [externalDepartments]);
+
+  useEffect(() => {
+    if (initialDepartmentId !== undefined) {
+      setSelectedDepartmentId(initialDepartmentId);
+    }
+  }, [initialDepartmentId]);
 
   const load = useCallback(async () => {
     setLoading(true);
