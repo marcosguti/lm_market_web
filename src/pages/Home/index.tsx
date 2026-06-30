@@ -8,6 +8,8 @@ import { getActiveDeals } from '../../api/deals';
 import Carousel from '../../components/Carousel';
 import DealBannerModal from '../../components/DealBannerModal';
 import SEO from '../../components/SEO';
+import OfferCarousel from './OfferCarousel';
+import OfferCard from './OfferCard';
 import ProductsCatalog from './ProductsCatalog';
 
 const DEALS_SESSION_KEY = 'lm_deals_banner_dismissed';
@@ -108,32 +110,40 @@ const Home = () => {
         title="Inicio"
         description="LM Market - Tu supermercado de confianza. Productos de excelente calidad al mejor precio. Ofertas especiales y atención personalizada."
       />
-      <Carousel
-        key={bannerSlides.map((banner) => banner.imageUrl).join('|')}
-        loading={bannersLoading}
-        slides={bannerSlides}
-      />
+      <div className="relative">
+        <Carousel
+          key={bannerSlides.map((banner) => banner.imageUrl).join('|')}
+          loading={bannersLoading}
+          slides={bannerSlides}
+        />
 
-      <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6 }}
-        className="w-full bg-primary text-center text-white"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mx-auto max-w-7xl px-[16px] py-[24px] sm:px-[24px] sm:py-[32px] lg:px-[32px]"
-        >
-          <h1 className="mb-[8px] text-2xl font-bold sm:text-3xl lg:text-4xl">
+        <div className="pointer-events-none absolute inset-0 z-[5] flex flex-col items-center justify-start pt-[32px] sm:pt-[40px] lg:pt-[48px] bg-gradient-to-r from-black/40 via-black/20 to-transparent text-white">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-3xl font-bold drop-shadow-lg sm:text-4xl lg:text-5xl"
+          >
+            Ofertas imperdibles
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="mt-2 text-sm drop-shadow-md sm:text-base lg:text-lg"
+          >
             Calidad al mejor precio
-          </h1>
-          <p className="mx-auto max-w-2xl text-sm sm:text-base">
-            Tu supermercado de confianza en Mérida.
-          </p>
-        </motion.div>
-      </motion.section>
+          </motion.p>
+        </div>
+      </div>
+
+      <div id="products-catalog" className="relative z-10 -mt-[400px] sm:-mt-[450px] lg:-mt-[500px] pb-[24px] sm:pb-[32px]">
+        <ProductsCatalog
+          key={selectedDepartmentId ?? 'all'}
+          externalDepartments={departments}
+          initialDepartmentId={selectedDepartmentId}
+        />
+      </div>
 
       {departments.length > 0 && (
         <section className="mx-auto max-w-7xl px-[16px] py-[20px] sm:px-[24px] sm:py-[28px] lg:px-[32px]">
@@ -169,55 +179,39 @@ const Home = () => {
         </section>
       )}
 
-      <div id="products-catalog" className="mx-auto w-full max-w-[1500px] py-[24px] sm:py-[32px]">
-        <ProductsCatalog
-          key={selectedDepartmentId ?? 'all'}
-          externalDepartments={departments}
-          initialDepartmentId={selectedDepartmentId}
-        />
-      </div>
-
       {!dealsLoading && activeDeals.length > 0 && (
-        <div className="mx-auto max-w-7xl px-[16px] py-[24px] sm:px-[24px] lg:px-[32px]">
-          <motion.section
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="mb-[32px]"
-          >
-            <motion.h2
-              variants={itemVariants}
-              className="mb-[16px] flex items-center gap-[8px] text-xl font-bold text-gray-900 sm:text-2xl"
-            >
-              <span className="text-primary">🔥</span> Ofertas de la semana
-            </motion.h2>
-            <div className="grid gap-[16px] sm:grid-cols-2 lg:grid-cols-3">
-              {activeDeals.slice(0, 6).map((imageUrl, index) => (
-                <motion.div
-                  key={imageUrl}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02, y: -4 }}
-                  className="group relative cursor-pointer overflow-hidden rounded-xl bg-white shadow-md transition-shadow hover:shadow-lg"
-                  onClick={handleOfferClick}
-                >
-                  <div className="relative aspect-[16/9] overflow-hidden">
-                    <img
-                      src={imageUrl}
-                      alt={`Oferta ${index + 1}`}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-[12px]">
-                    <p className="text-[11px] font-medium text-white/90 sm:text-[12px]">
-                      Tap para ver la oferta
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+        <section
+          id="ofertas-section"
+          className="mx-auto max-w-7xl px-[16px] py-[32px] sm:px-[24px] lg:px-[32px]"
+        >
+          <div className="mb-[20px] flex flex-col gap-[8px] sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                Ver Todas las Ofertas y Más
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Las mejores promociones de la semana
+              </p>
             </div>
-          </motion.section>
-        </div>
+            <button
+              type="button"
+              onClick={handleOfferClick}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              Ver todo
+            </button>
+          </div>
+
+          <OfferCarousel>
+            {activeDeals.slice(0, 12).map((imageUrl) => (
+              <OfferCard
+                key={imageUrl}
+                imageUrl={imageUrl}
+                onClick={handleOfferClick}
+              />
+            ))}
+          </OfferCarousel>
+        </section>
       )}
 
       <motion.section

@@ -14,6 +14,7 @@ import {
   message,
   Modal,
   Popover,
+  Skeleton,
 } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -27,7 +28,7 @@ import { getMaxOrderQuantity } from '../../utils/cartStock';
 
 const Header = () => {
   const navigate = useNavigate();
-  const { user, login, logout } = useAuth();
+  const { user, isLoading, login, logout } = useAuth();
   const { cart, cartSubtotal, clearCart, removeFromCart, totalItemCount, updateQuantity } =
     useCart();
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
@@ -284,7 +285,13 @@ const Header = () => {
             >
               Preguntas Frecuentes
             </Link>
-            {user ? (
+            {isLoading ? (
+              <Skeleton.Button
+                active
+                size="default"
+                style={{ height: 36, minWidth: 180 }}
+              />
+            ) : user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                 <Button
                   type="text"
@@ -416,7 +423,13 @@ const Header = () => {
                 }}
               />
             </Badge>
-            {user ? (
+            {isLoading ? (
+              <Skeleton.Button
+                active
+                size="small"
+                style={{ height: 24, minWidth: 60 }}
+              />
+            ) : user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                 <Button size="small" type="text">
                   {user.firstName}

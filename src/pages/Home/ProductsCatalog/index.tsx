@@ -378,7 +378,7 @@ const ProductsCatalog = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.45 }}
-        className="relative mx-auto mb-[64px] w-full max-w-[1500px] overflow-x-clip overflow-y-visible rounded-[24px] border border-gray-200/80 bg-gradient-to-br from-white via-gray-50/50 to-primary/[0.06] py-[40px] shadow-[0_24px_80px_-32px_rgba(0,0,0,0.15)] sm:py-[48px]"
+        className="relative mx-auto mb-[64px] w-full max-w-[1800px] overflow-x-clip overflow-y-visible rounded-[24px] border border-gray-200/80 bg-white py-[24px] shadow-[0_24px_80px_-32px_rgba(0,0,0,0.15)]"
       >
         <div
           className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
@@ -493,7 +493,7 @@ const ProductsCatalog = ({
                   <Empty className="py-[48px]" description="No hay productos para mostrar" />
                 ) : (
                   <>
-                    <ul className="mb-[40px] grid list-none gap-[20px] sm:grid-cols-2 xl:grid-cols-3 min-[2000px]:grid-cols-4">
+                    <ul className="mb-[40px] grid list-none gap-[20px] sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4 min-[2000px]:grid-cols-5 min-[2400px]:grid-cols-6">
                       {(result?.data ?? []).map((p) => (
                         <CatalogProductCard key={p.id} p={p} />
                       ))}
@@ -510,7 +510,11 @@ const ProductsCatalog = ({
                             `${range[0]}–${range[1]} de ${total} productos`
                           }
                           total={result.total}
-                          onChange={(p) => setPage(p)}
+                          onChange={(p) => {
+                            setPage(p);
+                            const el = document.getElementById('products-catalog');
+                            el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
                           onShowSizeChange={(_current, size) => {
                             setPageSize(size);
                             setPage(1);
