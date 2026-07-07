@@ -1,0 +1,25 @@
+import { formatOrderStatusChangeMessage, formatOrderStatusLabel } from './orderStatus';
+
+export function formatNotificationBody(
+  body: string,
+  payload?: null | Record<string, unknown>,
+  type?: string
+): string {
+  if (type === 'ORDER_STATUS_CHANGED' && payload) {
+    const previousStatus = payload.previousStatus;
+    const newStatus = payload.newStatus;
+    if (typeof previousStatus === 'string' && typeof newStatus === 'string') {
+      return formatOrderStatusChangeMessage(previousStatus, newStatus);
+    }
+  }
+
+  const match = body.match(/^Tu orden cambió de (\w+) a (\w+)$/);
+  if (match) {
+    return formatOrderStatusChangeMessage(match[1], match[2]);
+  }
+
+  return body.replace(
+    /\b(pending|paymentConfirmed|preparing|readyForDelivery|outForDelivery|delivered|cancelled)\b/g,
+    (status) => formatOrderStatusLabel(status)
+  );
+}

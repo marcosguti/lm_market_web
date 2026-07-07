@@ -213,7 +213,7 @@ const AdminDeals = () => {
   const confirmDelete = (row: AdminDeal) => {
     Modal.confirm({
       cancelText: 'Cancelar',
-      content: `¿Eliminar esta oferta? La imagen dejará de mostrarse en el carousel.`,
+      content: `¿Eliminar esta oferta? La imagen dejará de mostrarse en el carrusel.`,
       okText: 'Eliminar',
       okType: 'danger',
       onOk: async () => {

@@ -9,6 +9,7 @@ Allow: /preguntas-frecuentes
 Allow: /registro
 Allow: /iniciar-sesion
 Allow: /recuperar-password
+Allow: /restablecer-password
 
 Disallow: /cuenta
 Disallow: /checkout

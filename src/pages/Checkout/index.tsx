@@ -11,6 +11,7 @@ import {
   Input,
   List,
   message,
+  Modal,
   Select,
   Space,
   Typography,
@@ -22,9 +23,23 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import type { InventoryChange, OrderEntity, PaymentMethod } from '../../types/order';
 
-import { confirmOrderPayment, ensureCart } from '../../api/orders';
+import { confirmOrderPayment } from '../../api/orders';
+import {
+  getPaymentBanks,
+  getPaymentConfig,
+  type PaymentConfig,
+  type VenezuelanBank,
+  verifyMobilePayment,
+} from '../../api/payments';
+import { formatBs, usdToBs } from '../../constants/pricing';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import {
+  getInventoryMessage as buildInventoryMessage,
+  isMegasoftP2cCheckout,
+  isScreenshotTooLarge,
+} from '../../utils/checkoutPayment';
+import { normalizeVoucherText } from '../../utils/voucher';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -36,8 +51,7 @@ function formatMoney(value: number) {
 }
 
 function getInventoryMessage(changes: InventoryChange[]) {
-  if (changes.length === 0) return null;
-  return `La orden fue actualizada por inventario (${changes.length} ajuste${changes.length > 1 ? 's' : ''}).`;
+  return buildInventoryMessage(changes.length);
 }
 
 const PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
@@ -50,7 +64,7 @@ const PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { clearCart, replaceFromOrderLines } = useCart();
+  const { clearCart, flushCartSync, replaceFromOrderLines } = useCart();
   const [order, setOrder] = useState<null | OrderEntity>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
@@ -58,6 +72,14 @@ const CheckoutPage = () => {
   const [alertType, setAlertType] = useState<AlertProps['type']>('warning');
   const [form] = Form.useForm();
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
+  const [banks, setBanks] = useState<VenezuelanBank[]>([]);
+  const [voucherText, setVoucherText] = useState<string | null>(null);
+  const [voucherOpen, setVoucherOpen] = useState(false);
+  const [voucherErrorOpen, setVoucherErrorOpen] = useState(false);
+
+  const paymentMethod = Form.useWatch('paymentMethod', form) as PaymentMethod | undefined;
+  const megasoftP2c = isMegasoftP2cCheckout(paymentConfig?.megasoftEnabled, paymentMethod);
 
   const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
   const today = dayjs();
@@ -67,36 +89,56 @@ const CheckoutPage = () => {
     let cancelled = false;
     const run = async () => {
       setLoading(true);
-      const result = await ensureCart();
+      const [syncResult, configResult, banksResult] = await Promise.all([
+        flushCartSync(),
+        getPaymentConfig(),
+        getPaymentBanks(),
+      ]);
       if (cancelled) return;
       setLoading(false);
-      if (!result.ok || !result.data?.order) {
-        void message.error(
-          (result.data as { error?: string })?.error ?? 'No se pudo cargar la orden'
-        );
+
+      if (configResult.ok && configResult.data) {
+        setPaymentConfig(configResult.data);
+      }
+      if (banksResult.ok && banksResult.data?.banks) {
+        setBanks(banksResult.data.banks);
+      }
+
+      if (!syncResult.ok || !syncResult.order) {
+        void message.error(syncResult.error ?? 'No se pudo sincronizar el carrito con el servidor');
         return;
       }
-      setOrder(result.data.order);
-      replaceFromOrderLines(result.data.order.products);
-      setInventoryAlert(getInventoryMessage(result.data.changes));
+      setOrder(syncResult.order);
+      replaceFromOrderLines(syncResult.order.products);
+      setInventoryAlert(getInventoryMessage(syncResult.changes ?? []));
       if (user?.address) {
         form.setFieldValue('deliveryAddress', user.address);
+      }
+      if (user?.phone) {
+        form.setFieldValue('payerPhone', user.phone);
       }
     };
     void run();
     return () => {
       cancelled = true;
     };
-  }, [form, replaceFromOrderLines, user?.address, user?.firstName, user?.lastName]);
+  }, [flushCartSync, form, replaceFromOrderLines, user?.address, user?.phone]);
 
   const canPay = useMemo(
     () => !!order && order.status === 'pending' && order.products.length > 0,
     [order]
   );
 
+  const megasoftAmountBs = useMemo(
+    () => (order && megasoftP2c ? usdToBs(order.totalAmount) : null),
+    [megasoftP2c, order]
+  );
+
+  const orderTotalBs = useMemo(() => (order ? formatBs(order.totalAmount) : null), [order]);
+
   const handleScreenshotChange = (info: { file: File }) => {
     const file = info.file;
-    if (file.size > 500 * 1024) {
+    if (isScreenshotTooLarge(file.size)) {
       void message.error('La imagen debe ser menor a 500KB');
       setScreenshotFile(null);
       form.setFieldsValue({ screenshot: undefined });
@@ -105,19 +147,101 @@ const CheckoutPage = () => {
     setScreenshotFile(file);
   };
 
+  const handleInventoryConflict = (payload: {
+    code?: string;
+    details?: { changes?: InventoryChange[]; order?: OrderEntity };
+    error?: string;
+  }) => {
+    if (
+      payload?.code === 'ORDER_INVENTORY_CHANGED' ||
+      payload?.code === 'ORDER_EMPTY_AFTER_ADJUSTMENT'
+    ) {
+      const updatedOrder = payload.details?.order;
+      if (updatedOrder) {
+        setOrder(updatedOrder);
+        replaceFromOrderLines(updatedOrder.products);
+      }
+      setInventoryAlert(payload.error ?? 'La orden cambió por inventario');
+      setAlertType('warning');
+      return true;
+    }
+    return false;
+  };
+
+  const finishSuccess = (updatedOrder: OrderEntity, voucher?: string) => {
+    setOrder(updatedOrder);
+    if (voucher) {
+      setVoucherText(normalizeVoucherText(voucher));
+      setVoucherOpen(true);
+    }
+    setInventoryAlert('Pago confirmado. Te notificaremos cuando preparemos tu pedido.');
+    setAlertType('success');
+    clearCart({ afterCheckout: true });
+    if (!voucher) {
+      setTimeout(() => navigate('/mis-compras'), 1500);
+    }
+  };
+
   const handlePay = async () => {
     if (!order) return;
 
     try {
       const values = await form.validateFields();
-      const isCash = values.paymentMethod === 'cash';
+      setPaying(true);
 
-      if (!isCash && !screenshotFile) {
-        void message.error('Debes adjuntar el comprobante de pago');
+      if (megasoftP2c) {
+        const amount = megasoftAmountBs ?? usdToBs(order.totalAmount);
+        const result = await verifyMobilePayment(order.id, {
+          amount,
+          bankCode: values.payerBankCode as string,
+          nationalId: values.payerNationalId as string,
+          phone: values.payerPhone as string,
+          reference: values.payerReference as string,
+        });
+        setPaying(false);
+
+        if (!result.ok) {
+          const payload = result.data as {
+            code?: string;
+            details?: { changes?: InventoryChange[]; order?: OrderEntity };
+            error?: string;
+            voucher?: string;
+          };
+          if (handleInventoryConflict(payload)) return;
+          if (payload?.code === 'MEGASOFT_PLATFORM_ERROR') {
+            Modal.error({
+              content: payload.error ?? 'Problema en la plataforma bancaria. Intenta nuevamente.',
+              title: 'Plataforma no disponible',
+            });
+            return;
+          }
+          if (payload?.voucher) {
+            setVoucherText(normalizeVoucherText(payload.voucher));
+            setVoucherErrorOpen(true);
+          }
+          void message.error(payload?.error ?? 'No se pudo verificar el pago móvil');
+          return;
+        }
+
+        const data = result.data as {
+          order?: OrderEntity;
+          voucher?: string;
+        };
+        if (!data?.order) {
+          void message.error('No se recibió la orden actualizada');
+          return;
+        }
+        finishSuccess(data.order, data.voucher);
         return;
       }
 
-      setPaying(true);
+      const isCash = values.paymentMethod === 'cash';
+
+      if (!isCash && !screenshotFile) {
+        setPaying(false);
+        void message.error('Debes adjuntar el comprobante de pago');
+        return;
+      }
 
       let paidAt: string | undefined;
       if (!isCash && values.paidAt) {
@@ -140,19 +264,7 @@ const CheckoutPage = () => {
           details?: { changes?: InventoryChange[]; order?: OrderEntity };
           error?: string;
         };
-        if (
-          payload?.code === 'ORDER_INVENTORY_CHANGED' ||
-          payload?.code === 'ORDER_EMPTY_AFTER_ADJUSTMENT'
-        ) {
-          const updatedOrder = payload.details?.order;
-          if (updatedOrder) {
-            setOrder(updatedOrder);
-            replaceFromOrderLines(updatedOrder.products);
-          }
-          setInventoryAlert(payload.error ?? 'La orden cambió por inventario');
-          setAlertType('warning');
-          return;
-        }
+        if (handleInventoryConflict(payload)) return;
         void message.error(payload?.error ?? 'No se pudo confirmar el pago');
         return;
       }
@@ -162,15 +274,13 @@ const CheckoutPage = () => {
         return;
       }
 
-      setOrder(result.data.order);
-      setInventoryAlert('Pedido recibido. Te notificaremos cuando lo preparemos.');
-      setAlertType('success');
-      clearCart();
-      setTimeout(() => navigate('/mis-compras'), 1500);
+      finishSuccess(result.data.order);
     } catch {
       setPaying(false);
     }
   };
+
+  const merchant = paymentConfig?.merchant;
 
   return (
     <section className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -229,60 +339,139 @@ const CheckoutPage = () => {
                 <Select options={PAYMENT_METHODS} />
               </Form.Item>
 
-              <Form.Item
-                name="reference"
-                label="Número de confirmación"
-                rules={[
-                  { required: true, message: 'El número de confirmación es obligatorio' },
-                  { min: 3, message: 'Mínimo 3 caracteres' },
-                ]}
-              >
-                <Input placeholder="Email Zelle, teléfono o ID de transacción" />
-              </Form.Item>
+              {megasoftP2c ? (
+                <>
+                  {merchant ? (
+                    <Alert
+                      type="info"
+                      showIcon
+                      className="mb-4"
+                      message="Datos para transferir (Pago Móvil)"
+                      description={
+                        <Space direction="vertical" size={2}>
+                          {merchant.rif ? <Text>RIF: {merchant.rif}</Text> : null}
+                          <Text>
+                            Banco: {merchant.bankName} ({merchant.bankCode})
+                          </Text>
+                          <Text>Teléfono comercio: {merchant.phone || '—'}</Text>
+                          {order && megasoftAmountBs !== null ? (
+                            <Text strong>Monto exacto: Bs {formatMoney(megasoftAmountBs)}</Text>
+                          ) : null}
+                        </Space>
+                      }
+                    />
+                  ) : null}
+                  <Form.Item
+                    name="payerNationalId"
+                    label="Cédula del pagador"
+                    rules={[
+                      { required: true, message: 'La cédula es obligatoria' },
+                      { min: 3, message: 'Mínimo 3 caracteres' },
+                    ]}
+                  >
+                    <Input placeholder="Ej: 17322319 o Integrador (certificación)" />
+                  </Form.Item>
+                  <Form.Item
+                    name="payerPhone"
+                    label="Teléfono del pagador"
+                    rules={[
+                      { required: true, message: 'El teléfono es obligatorio' },
+                      { min: 3, message: 'Mínimo 3 caracteres' },
+                    ]}
+                  >
+                    <Input placeholder="Ej: 04120765408 o Integrador (certificación)" />
+                  </Form.Item>
+                  <Form.Item
+                    name="payerReference"
+                    label="Referencia del pago móvil"
+                    rules={[
+                      { required: true, message: 'La referencia es obligatoria' },
+                      { min: 3, message: 'Mínimo 3 caracteres' },
+                    ]}
+                  >
+                    <Input placeholder="Ej: 1234567890" />
+                  </Form.Item>
+                  <Form.Item
+                    name="payerBankCode"
+                    label="Banco emisor"
+                    rules={[{ required: true, message: 'Selecciona el banco emisor' }]}
+                  >
+                    <Select
+                      showSearch
+                      optionFilterProp="label"
+                      placeholder="Selecciona tu banco"
+                      options={banks.map((b) => ({
+                        label: `${b.name} (${b.code})`,
+                        value: b.code,
+                      }))}
+                    />
+                  </Form.Item>
+                  {megasoftAmountBs !== null ? (
+                    <Form.Item label="Monto a pagar">
+                      <Input readOnly value={`Bs ${formatMoney(megasoftAmountBs)}`} />
+                    </Form.Item>
+                  ) : null}
+                </>
+              ) : paymentMethod !== 'cash' ? (
+                <>
+                  <Form.Item
+                    name="reference"
+                    label="Número de confirmación"
+                    rules={[
+                      { required: true, message: 'El número de confirmación es obligatorio' },
+                      { min: 3, message: 'Mínimo 3 caracteres' },
+                    ]}
+                  >
+                    <Input placeholder="Email Zelle, teléfono o ID de transacción" />
+                  </Form.Item>
 
-              <Form.Item
-                name="paidAt"
-                label="Fecha de pago"
-                rules={[{ required: true, message: 'La fecha de pago es obligatoria' }]}
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  disabledDate={(current) => current.isAfter(today) || current.isBefore(minDate)}
-                  className="w-full"
-                />
-              </Form.Item>
+                  <Form.Item
+                    name="paidAt"
+                    label="Fecha de pago"
+                    rules={[{ required: true, message: 'La fecha de pago es obligatoria' }]}
+                  >
+                    <DatePicker
+                      format="DD/MM/YYYY"
+                      disabledDate={(current) =>
+                        current.isAfter(today) || current.isBefore(minDate)
+                      }
+                      className="w-full"
+                    />
+                  </Form.Item>
 
-              <Form.Item label="Comprobante de pago (opcional para pago en efectivo)">
-                <Upload
-                  accept="image/jpeg,image/png,image/webp"
-                  maxCount={1}
-                  beforeUpload={(file) => {
-                    handleScreenshotChange({ file });
-                    return false;
-                  }}
-                  onRemove={() => {
-                    setScreenshotFile(null);
-                    form.setFieldsValue({ screenshot: undefined });
-                  }}
-                  fileList={
-                    screenshotFile
-                      ? [
-                          {
-                            uid: '-1',
-                            name: screenshotFile.name,
-                            status: 'done',
-                            size: screenshotFile.size,
-                          },
-                        ]
-                      : []
-                  }
-                >
-                  <Button icon={<UploadOutlined />}>Adjuntar imagen (máx 500KB)</Button>
-                </Upload>
-                <Text type="secondary" className="text-xs">
-                  Formatos: JPG, PNG, WEBP. Máximo 500KB.
-                </Text>
-              </Form.Item>
+                  <Form.Item label="Comprobante de pago">
+                    <Upload
+                      accept="image/jpeg,image/png,image/webp"
+                      maxCount={1}
+                      beforeUpload={(file) => {
+                        handleScreenshotChange({ file });
+                        return false;
+                      }}
+                      onRemove={() => {
+                        setScreenshotFile(null);
+                        form.setFieldsValue({ screenshot: undefined });
+                      }}
+                      fileList={
+                        screenshotFile
+                          ? [
+                              {
+                                uid: '-1',
+                                name: screenshotFile.name,
+                                status: 'done',
+                                size: screenshotFile.size,
+                              },
+                            ]
+                          : []
+                      }
+                    >
+                      <Button icon={<UploadOutlined />}>Adjuntar imagen (máx 500KB)</Button>
+                    </Upload>
+                    <Text type="secondary" className="text-xs">
+                      Formatos: JPG, PNG, WEBP. Máximo 500KB.
+                    </Text>
+                  </Form.Item>
+                </>
+              ) : null}
             </Form>
           </Space>
         </Card>
@@ -305,14 +494,14 @@ const CheckoutPage = () => {
                           {line.code} · Cantidad: {line.quantity}
                         </div>
                       </div>
-                      <Text>REF {formatMoney(line.lineTotal)}</Text>
+                      <Text>Bs {formatBs(line.lineTotal)}</Text>
                     </div>
                   </List.Item>
                 )}
               />
               <div className="flex items-center justify-between border-t pt-4">
                 <Text strong>Total</Text>
-                <Text strong>REF {formatMoney(order.totalAmount)}</Text>
+                <Text strong>Bs {orderTotalBs}</Text>
               </div>
               <Button
                 type="primary"
@@ -322,12 +511,40 @@ const CheckoutPage = () => {
                 size="large"
                 className="w-full"
               >
-                Confirmar pedido
+                {megasoftP2c ? 'Verificar pago móvil' : 'Confirmar pedido'}
               </Button>
             </Space>
           )}
         </Card>
       </Space>
+
+      <Modal
+        title="Comprobante de pago"
+        open={voucherOpen}
+        onOk={() => {
+          setVoucherOpen(false);
+          navigate('/mis-compras');
+        }}
+        onCancel={() => {
+          setVoucherOpen(false);
+          navigate('/mis-compras');
+        }}
+        okText="Ir a mis compras"
+        cancelButtonProps={{ style: { display: 'none' } }}
+      >
+        <pre className="whitespace-pre-wrap rounded bg-gray-50 p-3 text-sm">{voucherText}</pre>
+      </Modal>
+
+      <Modal
+        title="Pago rechazado"
+        open={voucherErrorOpen}
+        onOk={() => setVoucherErrorOpen(false)}
+        onCancel={() => setVoucherErrorOpen(false)}
+        okText="Cerrar"
+        cancelButtonProps={{ style: { display: 'none' } }}
+      >
+        <pre className="whitespace-pre-wrap rounded bg-gray-50 p-3 text-sm">{voucherText}</pre>
+      </Modal>
     </section>
   );
 };

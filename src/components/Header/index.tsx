@@ -20,18 +20,28 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { getNotifications, markNotificationRead } from '../../api/notifications';
+import { formatBs } from '../../constants/pricing';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { connectSocket } from '../../realtime/socket';
 import { theme } from '../../theme';
 import { getMaxOrderQuantity } from '../../utils/cartStock';
+import { formatNotificationBody } from '../../utils/notification';
 
 const Header = () => {
   const navigate = useNavigate();
   const { user, isLoading, login, logout } = useAuth();
-  const { cart, cartSubtotal, clearCart, removeFromCart, totalItemCount, updateQuantity } =
-    useCart();
+  const {
+    cart,
+    cartSubtotal,
+    clearCart,
+    flushCartSync,
+    removeFromCart,
+    totalItemCount,
+    updateQuantity,
+  } = useCart();
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [checkoutSyncing, setCheckoutSyncing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -41,9 +51,11 @@ const Header = () => {
       createdAt: string;
       id: string;
       orderId: null | string;
+      payload: null | Record<string, unknown>;
       persisted: boolean;
       readAt: null | string;
       title: string;
+      type: string;
     }[]
   >([]);
   const [form] = Form.useForm<{ email: string; password: string }>();
@@ -76,14 +88,7 @@ const Header = () => {
     setMobileMenuOpen(false);
   };
 
-  const formattedTotal = useMemo(
-    () =>
-      cartSubtotal.toLocaleString('es-VE', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }),
-    [cartSubtotal]
-  );
+  const formattedTotalBs = useMemo(() => formatBs(cartSubtotal), [cartSubtotal]);
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.readAt).length,
     [notifications]
@@ -107,9 +112,11 @@ const Header = () => {
             createdAt: item.createdAt,
             id: item.id,
             orderId: item.orderId,
+            payload: item.payload,
             persisted: true,
             readAt: item.readAt,
             title: item.title,
+            type: item.type,
           }))
         );
       }
@@ -125,20 +132,29 @@ const Header = () => {
     const socket = connectSocket(token);
     const onNotification = (payload: {
       body?: string;
+      newStatus?: string;
       orderId?: string;
+      previousStatus?: string;
       status?: string;
       title?: string;
       type?: string;
     }) => {
       const now = new Date().toISOString();
+      const notificationPayload =
+        payload.previousStatus && payload.newStatus
+          ? { newStatus: payload.newStatus, previousStatus: payload.previousStatus }
+          : null;
+      const rawBody = payload.body ?? 'Tu orden fue actualizada';
       const next = {
-        body: payload.body ?? 'Tu orden fue actualizada',
+        body: rawBody,
         createdAt: now,
         id: `${now}-${Math.random().toString(16).slice(2)}`,
         orderId: payload.orderId ?? null,
+        payload: notificationPayload,
         persisted: false,
         readAt: null,
-        title: payload.title ?? 'Notificacion',
+        title: payload.title ?? 'Notificación',
+        type: payload.type ?? 'ORDER_STATUS_CHANGED',
       };
       setNotifications((prev) => [next, ...prev].slice(0, 30));
 
@@ -150,7 +166,9 @@ const Header = () => {
         typeof Notification !== 'undefined' &&
         Notification.permission === 'granted'
       ) {
-        void new Notification(next.title, { body: next.body });
+        void new Notification(next.title, {
+          body: formatNotificationBody(next.body, next.payload, next.type),
+        });
       }
     };
 
@@ -196,7 +214,7 @@ const Header = () => {
             key: 'orders',
             label: (
               <Link className="no-underline hover:no-underline" to="/orders">
-                Panel ordenes
+                Panel órdenes
               </Link>
             ),
           },
@@ -286,11 +304,7 @@ const Header = () => {
               Preguntas Frecuentes
             </Link>
             {isLoading ? (
-              <Skeleton.Button
-                active
-                size="default"
-                style={{ height: 36, minWidth: 180 }}
-              />
+              <Skeleton.Button active size="default" style={{ height: 36, minWidth: 180 }} />
             ) : user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                 <Button
@@ -363,7 +377,7 @@ const Header = () => {
                               }
                               description={
                                 <span className="text-xs text-gray-500">
-                                  {item.body}
+                                  {formatNotificationBody(item.body, item.payload, item.type)}
                                   <br />
                                   {new Date(item.createdAt).toLocaleString()}
                                 </span>
@@ -424,11 +438,7 @@ const Header = () => {
               />
             </Badge>
             {isLoading ? (
-              <Skeleton.Button
-                active
-                size="small"
-                style={{ height: 24, minWidth: 60 }}
-              />
+              <Skeleton.Button active size="small" style={{ height: 24, minWidth: 60 }} />
             ) : user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                 <Button size="small" type="text">
@@ -440,9 +450,9 @@ const Header = () => {
                 Entrar
               </Button>
             )}
-            <Button
-              aria-label="Toggle menu"
-              className="md:hidden"
+              <Button
+                aria-label="Alternar menú"
+                className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               type="text"
             >
@@ -534,18 +544,31 @@ const Header = () => {
           <div className="flex flex-col gap-[12px]">
             <div className="flex items-center justify-between text-base font-semibold text-gray-900">
               <span>Total a pagar</span>
-              <span className="tabular-nums text-primary">REF {formattedTotal}</span>
+              <span className="tabular-nums text-primary">Bs {formattedTotalBs}</span>
             </div>
             <Button
               block
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || checkoutSyncing}
+              loading={checkoutSyncing}
               type="primary"
               onClick={() => {
-                setCartDrawerOpen(false);
                 if (user?.type === 'client') {
-                  navigate('/checkout');
+                  void (async () => {
+                    setCheckoutSyncing(true);
+                    const syncResult = await flushCartSync();
+                    setCheckoutSyncing(false);
+                    if (!syncResult.ok || !syncResult.order) {
+                      void message.error(
+                        syncResult.error ?? 'No se pudo sincronizar el carrito con el servidor'
+                      );
+                      return;
+                    }
+                    setCartDrawerOpen(false);
+                    navigate('/checkout');
+                  })();
                   return;
                 }
+                setCartDrawerOpen(false);
                 if (!user) {
                   void message.info('Inicia sesión para continuar al checkout.');
                   return;
@@ -569,10 +592,7 @@ const Header = () => {
             {cart.map((item) => {
               const max = getMaxOrderQuantity(item.product);
               const lineTotal = item.product.price * item.quantity;
-              const lineFmt = lineTotal.toLocaleString('es-VE', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
+              const lineTotalBs = formatBs(lineTotal);
               return (
                 <div
                   key={item.productId}
@@ -595,7 +615,7 @@ const Header = () => {
                       <p className="mt-[4px] text-xs text-gray-500">{item.product.brand}</p>
                     ) : null}
                     <p className="mt-[8px] text-sm tabular-nums text-primary">
-                      REF {item.product.price} × {item.quantity} = REF {lineFmt}
+                      Bs {formatBs(item.product.price)} × {item.quantity} = Bs {lineTotalBs}
                     </p>
                     <div className="mt-[12px] flex flex-wrap items-center gap-[8px]">
                       <span className="text-xs text-gray-600">Cant.</span>

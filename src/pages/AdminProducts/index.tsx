@@ -190,7 +190,7 @@ const AdminProducts = () => {
         ) : (
           <span className="text-gray-400">—</span>
         ),
-      title: 'Img',
+      title: 'Imagen',
       width: 72,
     },
     { dataIndex: 'code', key: 'code', title: 'Código' },
@@ -206,7 +206,7 @@ const AdminProducts = () => {
       dataIndex: 'totalStock',
       key: 'totalStock',
       render: (v: number | null) => (v == null ? '—' : v),
-      title: 'Stock',
+      title: 'Existencias',
     },
     {
       dataIndex: 'active',
@@ -413,7 +413,7 @@ const AdminProducts = () => {
                                 <InputNumber className="w-full" min={0} precision={2} placeholder="Precio (Bs)" />
                               </Form.Item>
                               <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
-                                <InputNumber className="w-full" min={0} precision={0} placeholder="Stock" />
+                                <InputNumber className="w-full" min={0} precision={0} placeholder="Existencias" />
                               </Form.Item>
                             </div>
                           );
@@ -526,7 +526,7 @@ const AdminProducts = () => {
                               <InputNumber className="w-full" min={0} precision={2} placeholder="Precio (Bs)" />
                             </Form.Item>
                             <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
-                              <InputNumber className="w-full" min={0} precision={0} placeholder="Stock" />
+                              <InputNumber className="w-full" min={0} precision={0} placeholder="Existencias" />
                             </Form.Item>
                           </div>
                         ))

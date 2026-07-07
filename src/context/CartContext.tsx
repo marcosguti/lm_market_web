@@ -1,3 +1,4 @@
+import { message } from 'antd';
 import {
   createContext,
   type ReactNode,
@@ -9,13 +10,15 @@ import {
   useState,
 } from 'react';
 
-import type { OrderLine } from '../types/order';
+import type { InventoryChange, OrderEntity, OrderLine } from '../types/order';
 
 import { ensureCart, patchOrderLines } from '../api/orders';
+import { getStores } from '../api/stores';
 import { getMaxOrderQuantity } from '../utils/cartStock';
 import { useAuth } from './AuthContext';
 
 const CART_KEY = 'lm_market_cart';
+const STORE_KEY = 'lm_market_store';
 
 export interface CartProduct {
   code?: string;
@@ -41,14 +44,24 @@ export interface AddToCartResult {
   requested: number;
 }
 
+export interface FlushCartSyncResult {
+  changes?: InventoryChange[];
+  error?: string;
+  ok: boolean;
+  order?: OrderEntity;
+}
+
 interface CartContextValue {
   addToCart: (product: CartProduct, quantity?: number) => AddToCartResult;
   cart: CartItem[];
   cartSubtotal: number;
-  clearCart: () => void;
+  clearCart: (options?: { afterCheckout?: boolean }) => void;
+  flushCartSync: () => Promise<FlushCartSyncResult>;
   orderId: null | string;
   removeFromCart: (productId: string) => void;
   replaceFromOrderLines: (lines: OrderLine[]) => void;
+  setStoreId: (storeId: string) => void;
+  storeId: string;
   totalItemCount: number;
   updateQuantity: (productId: string, quantity: number) => void;
 }
@@ -66,8 +79,21 @@ function loadCart(): CartItem[] {
   }
 }
 
+function loadStoreId(): string {
+  try {
+    return localStorage.getItem(STORE_KEY)?.trim() ?? '';
+  } catch {
+    return '';
+  }
+}
+
 function saveCart(cart: CartItem[]) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
+}
+
+function saveStoreId(storeId: string) {
+  if (storeId) localStorage.setItem(STORE_KEY, storeId);
+  else localStorage.removeItem(STORE_KEY);
 }
 
 function clampQuantity(product: CartProduct, quantity: number): number {
@@ -98,16 +124,50 @@ function mapCartToOrderPatch(cart: CartItem[]): { code: string; quantity: number
     .filter((item) => item.code.length > 0);
 }
 
+function serializeCartLines(cart: CartItem[]): string {
+  return JSON.stringify(mapCartToOrderPatch(cart));
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>(() => loadCart());
   const [orderId, setOrderId] = useState<null | string>(null);
+  const [storeId, setStoreIdState] = useState<string>(() => loadStoreId());
   const syncingFromServerRef = useRef(false);
-  const syncingRequestRef = useRef(false);
+  const syncInFlightRef = useRef<null | Promise<FlushCartSyncResult>>(null);
+  const cartRef = useRef(cart);
+  const orderIdRef = useRef(orderId);
+  const storeIdRef = useRef(storeId);
+
+  cartRef.current = cart;
+  orderIdRef.current = orderId;
+  storeIdRef.current = storeId;
+
+  const setStoreId = useCallback((id: string) => {
+    const trimmed = id.trim();
+    setStoreIdState(trimmed);
+    saveStoreId(trimmed);
+  }, []);
 
   useEffect(() => {
     saveCart(cart);
   }, [cart]);
+
+  useEffect(() => {
+    if (user?.type !== 'client') return;
+
+    let cancelled = false;
+    void (async () => {
+      if (loadStoreId()) return;
+      const stores = await getStores();
+      if (cancelled || stores.length === 0) return;
+      setStoreId(stores[0].id);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setStoreId, user?.id, user?.type]);
 
   const replaceFromOrderLines = useCallback((lines: OrderLine[]) => {
     syncingFromServerRef.current = true;
@@ -117,15 +177,122 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const syncToServer = useCallback(
+    async (showErrorToast: boolean): Promise<FlushCartSyncResult> => {
+      if (user?.type !== 'client') {
+        return { error: 'Debes iniciar sesión como cliente', ok: false };
+      }
+
+      const currentStoreId = storeIdRef.current;
+      if (!currentStoreId) {
+        return { error: 'Tienda no seleccionada', ok: false };
+      }
+
+      let currentOrderId = orderIdRef.current;
+      if (!currentOrderId) {
+        const cartResult = await ensureCart(currentStoreId);
+        if (!cartResult.ok || !cartResult.data?.order) {
+          const err =
+            (cartResult.data as { error?: string })?.error ??
+            'No se pudo obtener la orden pendiente';
+          return { error: err, ok: false };
+        }
+        currentOrderId = cartResult.data.order.id;
+        setOrderId(currentOrderId);
+      }
+
+      const lines = mapCartToOrderPatch(cartRef.current);
+      const result = await patchOrderLines(currentOrderId, lines, currentStoreId);
+
+      if (!result.ok) {
+        const payload = result.data as { code?: string; error?: string };
+        if (payload?.code === 'ORDER_NOT_PENDING') {
+          const cartResult = await ensureCart(currentStoreId);
+          if (cartResult.ok && cartResult.data?.order) {
+            setOrderId(cartResult.data.order.id);
+            replaceFromOrderLines(cartResult.data.order.products);
+            return {
+              changes: cartResult.data.changes,
+              ok: true,
+              order: cartResult.data.order,
+            };
+          }
+        }
+
+        const error = payload?.error ?? 'No se pudo guardar el carrito en el servidor';
+        if (showErrorToast) {
+          message.warning(error);
+        }
+        console.warn('[CartContext] sync failed', payload);
+        return { error, ok: false };
+      }
+
+      if (!result.data?.order) {
+        return { error: 'No se recibió la orden actualizada', ok: false };
+      }
+
+      setOrderId(result.data.order.id);
+      const next = mapOrderLinesToCart(result.data.order.products);
+      if (JSON.stringify(next) !== JSON.stringify(cartRef.current)) {
+        replaceFromOrderLines(result.data.order.products);
+      }
+
+      return {
+        changes: result.data.changes,
+        ok: true,
+        order: result.data.order,
+      };
+    },
+    [replaceFromOrderLines, user?.type]
+  );
+
+  const executeSyncCycle = useCallback(
+    async (showErrorToast: boolean): Promise<FlushCartSyncResult> => {
+      while (syncInFlightRef.current) {
+        await syncInFlightRef.current;
+      }
+
+      const promise = (async (): Promise<FlushCartSyncResult> => {
+        let lastResult: FlushCartSyncResult = { error: 'Sin sincronizar', ok: false };
+
+        while (!syncingFromServerRef.current) {
+          const linesBefore = serializeCartLines(cartRef.current);
+          lastResult = await syncToServer(showErrorToast);
+          if (!lastResult.ok) return lastResult;
+
+          const linesAfter = serializeCartLines(cartRef.current);
+          if (linesAfter === linesBefore) return lastResult;
+        }
+
+        return lastResult;
+      })();
+
+      syncInFlightRef.current = promise;
+      try {
+        return await promise;
+      } finally {
+        if (syncInFlightRef.current === promise) {
+          syncInFlightRef.current = null;
+        }
+      }
+    },
+    [syncToServer]
+  );
+
+  const flushCartSync = useCallback(async (): Promise<FlushCartSyncResult> => {
+    return executeSyncCycle(false);
+  }, [executeSyncCycle]);
+
   useEffect(() => {
     if (user?.type !== 'client') {
       queueMicrotask(() => setOrderId(null));
       return;
     }
+    if (!storeId) return;
 
     let cancelled = false;
     const hydrate = async () => {
-      const result = await ensureCart();
+      const result = await ensureCart(storeId);
       if (cancelled || !result.ok || !result.data?.order) return;
       setOrderId(result.data.order.id);
       replaceFromOrderLines(result.data.order.products);
@@ -134,39 +301,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [replaceFromOrderLines, user?.id, user?.type]);
+  }, [replaceFromOrderLines, storeId, user?.id, user?.type]);
 
   useEffect(() => {
     if (user?.type !== 'client') return;
     if (!orderId) return;
+    if (!storeId) return;
     if (syncingFromServerRef.current) return;
-    if (syncingRequestRef.current) return;
 
-    const lines = mapCartToOrderPatch(cart);
-    syncingRequestRef.current = true;
-    const sync = async () => {
-      const result = await patchOrderLines(orderId, lines);
-      syncingRequestRef.current = false;
-      if (!result.ok) {
-        const error = result.data as { code?: string };
-        if (error?.code === 'ORDER_NOT_PENDING') {
-          const cartResult = await ensureCart();
-          if (cartResult.ok && cartResult.data?.order) {
-            setOrderId(cartResult.data.order.id);
-            replaceFromOrderLines(cartResult.data.order.products);
-          }
-        }
-        return;
-      }
-      if (!result.data?.order) return;
-      setOrderId(result.data.order.id);
-      const next = mapOrderLinesToCart(result.data.order.products);
-      if (JSON.stringify(next) !== JSON.stringify(cart)) {
-        replaceFromOrderLines(result.data.order.products);
-      }
-    };
-    void sync();
-  }, [cart, orderId, replaceFromOrderLines, user?.type]);
+    void executeSyncCycle(true);
+  }, [cart, executeSyncCycle, orderId, storeId, user?.type]);
 
   const cartSubtotal = useMemo(
     () => cart.reduce((sum, i) => sum + i.product.price * i.quantity, 0),
@@ -240,7 +384,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback((options?: { afterCheckout?: boolean }) => {
+    if (options?.afterCheckout) {
+      setOrderId(null);
+    }
+    setCart([]);
+  }, []);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -248,9 +397,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       cart,
       cartSubtotal,
       clearCart,
+      flushCartSync,
       orderId,
       removeFromCart,
       replaceFromOrderLines,
+      setStoreId,
+      storeId,
       totalItemCount,
       updateQuantity,
     }),
@@ -259,9 +411,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       cart,
       cartSubtotal,
       clearCart,
+      flushCartSync,
       orderId,
       removeFromCart,
       replaceFromOrderLines,
+      setStoreId,
+      storeId,
       totalItemCount,
       updateQuantity,
     ]

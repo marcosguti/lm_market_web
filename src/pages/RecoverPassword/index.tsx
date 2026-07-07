@@ -76,11 +76,6 @@ const RecoverPassword = () => {
             </Button>
           </Form>
         )}
-        <p className="mt-[16px] text-center text-sm text-gray-600">
-          <Link className="text-primary hover:underline" to="/iniciar-sesion">
-            Volver a iniciar sesión
-          </Link>
-        </p>
       </div>
     </>
   );

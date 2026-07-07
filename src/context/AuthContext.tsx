@@ -75,7 +75,7 @@ async function request<T>(
   const data = await res.json().catch(() => ({}));
   return {
     data: data as T,
-    error: data.error ?? (res.ok ? undefined : 'Request failed'),
+    error: data.error ?? (res.ok ? undefined : 'Error en la solicitud'),
     status: res.status,
   };
 }
@@ -89,7 +89,7 @@ async function getRequest<T>(path: string): Promise<{ data?: T; error?: string; 
   const data = await res.json().catch(() => ({}));
   return {
     data: data as T,
-    error: data.error ?? (res.ok ? undefined : 'Request failed'),
+    error: data.error ?? (res.ok ? undefined : 'Error en la solicitud'),
     status: res.status,
   };
 }
@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: User;
     }>('/api/auth/login', { email, password, deviceId: getDeviceId() });
     if (error || status !== 200 || !data?.accessToken) {
-      return { error: (data as { error?: string })?.error ?? error ?? 'Login failed' };
+      return { error: (data as { error?: string })?.error ?? error ?? 'Error al iniciar sesión' };
     }
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
       if (error || (status !== 201 && status !== 200) || !res?.accessToken) {
-        return { error: (res as { error?: string })?.error ?? error ?? 'Registration failed' };
+        return { error: (res as { error?: string })?.error ?? error ?? 'Error al registrarse' };
       }
       localStorage.setItem(TOKEN_KEY, res.accessToken);
       if (res.refreshToken) {
@@ -256,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
     });
     if (error || status !== 200) {
-      return { error: (error as string) ?? 'Invalid or expired token' };
+      return { error: (error as string) ?? 'Token inválido o expirado' };
     }
     return {};
   }, []);
@@ -269,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status,
       } = await request<{ user: User }>('/api/auth/cuenta', data, 'PATCH');
       if (error || status !== 200 || !res?.user) {
-        return { error: (res as { error?: string })?.error ?? error ?? 'Update failed' };
+        return { error: (res as { error?: string })?.error ?? error ?? 'Error al actualizar' };
       }
       localStorage.setItem(USER_KEY, JSON.stringify(res.user));
       setState((s) => ({ ...s, user: res.user }));
@@ -284,7 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       newPassword,
     });
     if (error || status !== 200) {
-      return { error: (error as string) ?? 'Could not change password' };
+      return { error: (error as string) ?? 'No se pudo cambiar la contraseña' };
     }
     return {};
   }, []);

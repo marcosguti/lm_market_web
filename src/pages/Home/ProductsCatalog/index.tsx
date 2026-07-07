@@ -202,7 +202,7 @@ const ProductsCatalog = ({
   const [error, setError] = useState<string | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-  const { cart: cartItems, clearCart } = useCart();
+  const { cart: cartItems, clearCart, setStoreId, storeId: cartStoreId } = useCart();
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -233,9 +233,13 @@ const ProductsCatalog = ({
       const [b, s] = await Promise.all([fetchBrands(), getStores()]);
       setBrands(b);
       setStores(s);
-      if (s.length > 0) setSelectedStoreId(s[0].id);
+      if (s.length === 0) return;
+      const initial =
+        cartStoreId && s.some((store) => store.id === cartStoreId) ? cartStoreId : s[0].id;
+      setSelectedStoreId(initial);
+      if (initial !== cartStoreId) setStoreId(initial);
     })();
-  }, []);
+  }, [cartStoreId, setStoreId]);
 
   useEffect(() => {
     if (externalDepartments) return;
@@ -330,12 +334,14 @@ const ProductsCatalog = ({
         onOk: () => {
           clearCart();
           setSelectedStoreId(storeId);
+          setStoreId(storeId);
           setPage(1);
           load();
         },
       });
     } else {
       setSelectedStoreId(storeId);
+      setStoreId(storeId);
       setPage(1);
     }
   };

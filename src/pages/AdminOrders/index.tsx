@@ -1,13 +1,51 @@
-import { EyeOutlined } from '@ant-design/icons';
-import { Alert, Button, Image, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { CreditCardOutlined, EyeOutlined } from '@ant-design/icons';
+import {
+  Alert,
+  Button,
+  Image,
+  message,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { useEffect, useState } from 'react';
 
 import type { OrderEntity, OrderStatus } from '../../types/order';
 
 import { getKitchenOrders, patchAdminOrderStatus, verifyPayment } from '../../api/orders';
+import { OrderProductsModal } from '../../components/OrderProductsModal';
 import { connectSocket, disconnectSocket, getSocket } from '../../realtime/socket';
+import { canCancelOrder } from '../../utils/orderStatus';
 
 const { Title } = Typography;
+
+function formatOrderDate(dateStr: string | null | undefined) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleString('es-VE');
+}
+
+function renderPaymentStatus(order: OrderEntity) {
+  if (order.status === 'pending') {
+    if (order.paymentScreenshotUrl) {
+      return <Tag color="orange">Pendiente verificación</Tag>;
+    }
+    return <Tag>Sin comprobante</Tag>;
+  }
+
+  if (order.payment?.verifiedAutomatically) {
+    return <Tag color="green">Verificado automáticamente (P2C)</Tag>;
+  }
+
+  if (order.payment?.verifiedAt) {
+    return <Tag color="green">Verificado el {formatOrderDate(order.payment.verifiedAt)}</Tag>;
+  }
+
+  return <Tag color="green">Pago confirmado</Tag>;
+}
 
 const statusColor: Record<string, string> = {
   cancelled: 'red',
@@ -24,6 +62,10 @@ const AdminOrdersPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{
+    open: boolean;
+    order: OrderEntity | null;
+  }>({ open: false, order: null });
+  const [productsModal, setProductsModal] = useState<{
     open: boolean;
     order: OrderEntity | null;
   }>({ open: false, order: null });
@@ -66,14 +108,29 @@ const AdminOrdersPage = () => {
     };
   }, [token]);
 
-  const statusOptions = useMemo(
-    () => [
-      { label: 'Preparando', value: 'preparing' },
-      { label: 'Lista para reparto', value: 'readyForDelivery' },
-      { label: 'Cancelar', value: 'cancelled' },
-    ],
-    []
-  );
+  const getStatusOptions = (order: OrderEntity): { label: string; value: OrderStatus }[] => {
+    if (order.status === 'paymentConfirmed') {
+      return [{ label: 'Preparando', value: 'preparing' }];
+    }
+    if (order.status === 'preparing') {
+      return [{ label: 'Lista para reparto', value: 'readyForDelivery' }];
+    }
+    if (order.status === 'outForDelivery') {
+      return [{ label: 'Entregado', value: 'delivered' }];
+    }
+    return [];
+  };
+
+  const handleCancelOrder = (order: OrderEntity) => {
+    Modal.confirm({
+      title: '¿Cancelar esta orden?',
+      content: 'Esta acción no se puede deshacer. La orden quedará cancelada.',
+      okText: 'Sí, cancelar',
+      cancelText: 'No',
+      okButtonProps: { danger: true },
+      onOk: () => patchStatus(order.id, 'cancelled'),
+    });
+  };
 
   const patchStatus = async (orderId: string, nextStatus: OrderStatus) => {
     const result = await patchAdminOrderStatus(orderId, nextStatus);
@@ -102,10 +159,7 @@ const AdminOrdersPage = () => {
     void reload();
   };
 
-  const formatDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleString('es-VE');
-  };
+  const formatDate = formatOrderDate;
 
   const formatMethod = (method: string | null | undefined) => {
     if (!method) return '—';
@@ -122,7 +176,7 @@ const AdminOrdersPage = () => {
     <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Space direction="vertical" size={16} className="w-full">
         <Title level={2} className="!mb-0">
-          Ordenes de compra
+          Órdenes de compra
         </Title>
         {error ? <Alert type="error" showIcon message={error} /> : null}
         <Table
@@ -183,29 +237,46 @@ const AdminOrdersPage = () => {
               width: 280,
               render: (_, row: OrderEntity) => (
                 <Space>
+                  <Tooltip title="Ver productos">
+                    <Button
+                      type="text"
+                      icon={<EyeOutlined />}
+                      aria-label="Ver productos de la orden"
+                      onClick={() => setProductsModal({ open: true, order: row })}
+                    />
+                  </Tooltip>
                   <Button
-                    icon={<EyeOutlined />}
+                    icon={<CreditCardOutlined />}
                     onClick={() => setPaymentModal({ open: true, order: row })}
                   >
                     Pago
                   </Button>
                   <Select
+                    disabled={getStatusOptions(row).length === 0}
                     placeholder="Cambiar estado"
                     style={{ minWidth: 150 }}
-                    options={statusOptions}
+                    options={getStatusOptions(row)}
                     onChange={(value) => {
                       void patchStatus(row.id, value as OrderStatus);
                     }}
                   />
-                  <Button danger onClick={() => void patchStatus(row.id, 'cancelled')}>
-                    Cancelar
-                  </Button>
+                  {canCancelOrder(row.status) ? (
+                    <Button danger onClick={() => handleCancelOrder(row)}>
+                      Cancelar
+                    </Button>
+                  ) : null}
                 </Space>
               ),
             },
           ]}
         />
       </Space>
+
+      <OrderProductsModal
+        open={productsModal.open}
+        order={productsModal.order}
+        onClose={() => setProductsModal({ open: false, order: null })}
+      />
 
       <Modal
         title="Detalles del pago"
@@ -243,14 +314,7 @@ const AdminOrdersPage = () => {
               <strong>Fecha de pago:</strong> {formatDate(paymentModal.order.paymentDate)}
             </p>
             <p>
-              <strong>Estado del pago:</strong>{' '}
-              {paymentModal.order.payment?.verifiedAt ? (
-                <Tag color="green">
-                  Verificado el {formatDate(paymentModal.order.payment?.verifiedAt)}
-                </Tag>
-              ) : (
-                <Tag color="orange">Pendiente verificación</Tag>
-              )}
+              <strong>Estado del pago:</strong> {renderPaymentStatus(paymentModal.order)}
             </p>
             <p>
               <strong>Dirección de envío:</strong> {paymentModal.order.deliveryAddress ?? '—'}

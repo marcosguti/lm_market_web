@@ -21,8 +21,10 @@ export interface OrderApiError {
   error?: string;
 }
 
-export async function ensureCart() {
-  return api<CartResponse>('/api/orders/cart');
+export async function ensureCart(storeId?: string) {
+  return api<CartResponse>('/api/orders/cart', {
+    params: storeId ? { storeId } : undefined,
+  });
 }
 
 export async function getOrder(orderId: string) {
@@ -31,10 +33,11 @@ export async function getOrder(orderId: string) {
 
 export async function patchOrderLines(
   orderId: string,
-  lines: { code: string; quantity: number }[]
+  lines: { code: string; quantity: number }[],
+  storeId?: string
 ) {
   return api<CartResponse>(`/api/orders/${orderId}/lines`, {
-    body: JSON.stringify({ lines }),
+    body: JSON.stringify({ lines, ...(storeId ? { storeId } : {}) }),
     method: 'PATCH',
   });
 }

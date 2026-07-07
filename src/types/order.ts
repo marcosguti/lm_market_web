@@ -19,14 +19,15 @@ export interface OrderLine {
 }
 
 export interface Payment {
+  createdAt: string;
   id: string;
   method: PaymentMethod;
-  reference: string;
   paidAt: string;
+  reference: string;
   screenshotUrl: string | null;
   verifiedAt: string | null;
+  verifiedAutomatically?: boolean;
   verifiedBy: string | null;
-  createdAt: string;
 }
 
 export interface OrderEntity {
@@ -46,6 +47,7 @@ export interface OrderEntity {
   paymentScreenshotUrl: null | string;
   products: OrderLine[];
   status: OrderStatus;
+  storeId: null | string;
   totalAmount: number;
   updatedAt: string;
   userId: string;

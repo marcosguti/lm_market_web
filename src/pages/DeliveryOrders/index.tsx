@@ -108,7 +108,7 @@ const DeliveryOrdersPage = () => {
                     },
                   },
                   {
-                    title: 'Accion',
+                    title: 'Acción',
                     key: 'action',
                     render: (_, row: OrderEntity) => (
                       <Button type="primary" size="small" onClick={() => void claimOrder(row.id)}>
@@ -147,7 +147,7 @@ const DeliveryOrdersPage = () => {
                     },
                   },
                   {
-                    title: 'Accion',
+                    title: 'Acción',
                     key: 'action',
                     render: (_, row: OrderEntity) => (
                       <Button

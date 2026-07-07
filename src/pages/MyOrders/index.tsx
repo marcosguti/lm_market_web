@@ -1,10 +1,13 @@
-import { Alert, Table, Tag, Typography } from 'antd';
-import { useEffect, useState } from 'react';
+import { EyeOutlined } from '@ant-design/icons';
+import { Alert, Button, Table, Tag, Tooltip, Typography } from 'antd';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { OrderEntity } from '../../types/order';
 
 import { getOrderHistory } from '../../api/orders';
+import { OrderProductsModal } from '../../components/OrderProductsModal';
 import { connectSocket } from '../../realtime/socket';
+import { ORDER_STATUS_LABELS } from '../../utils/orderStatus';
 
 const { Title } = Typography;
 
@@ -30,6 +33,22 @@ const MyOrdersPage = () => {
   const [data, setData] = useState<OrderEntity[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [productsModal, setProductsModal] = useState<{
+    open: boolean;
+    order: OrderEntity | null;
+  }>({ open: false, order: null });
+
+  const refetchOrders = useCallback(async () => {
+    setLoading(true);
+    const result = await getOrderHistory(1, 50);
+    setLoading(false);
+    if (!result.ok || !result.data?.data) {
+      setError((result.data as { error?: string })?.error ?? 'No se pudo cargar el historial');
+      return;
+    }
+    setData(result.data.data);
+    setError('');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,13 +77,18 @@ const MyOrdersPage = () => {
     const socket = connectSocket(token);
 
     const onOrderUpdated = (payload: OrderUpdatedPayload) => {
-      setData((prev) =>
-        prev.map((order) =>
+      setData((prev) => {
+        const exists = prev.some((order) => order.id === payload.id);
+        if (!exists) return prev;
+        return prev.map((order) =>
           order.id === payload.id
             ? { ...order, status: payload.status as OrderEntity['status'] }
             : order
-        )
-      );
+        );
+      });
+      if (payload.status !== 'pending') {
+        void refetchOrders();
+      }
     };
 
     socket.on('order:updated', onOrderUpdated);
@@ -72,7 +96,7 @@ const MyOrdersPage = () => {
     return () => {
       socket.off('order:updated', onOrderUpdated);
     };
-  }, []);
+  }, [refetchOrders]);
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -88,18 +112,11 @@ const MyOrdersPage = () => {
             title: 'Estado',
             dataIndex: 'status',
             key: 'status',
-            render: (status: string) => {
-              const labels: Record<string, string> = {
-                pending: 'Pendiente',
-                paymentConfirmed: 'Pago Confirmado',
-                preparing: 'Preparando',
-                readyForDelivery: 'Lista para Reparto',
-                outForDelivery: 'En Reparto',
-                delivered: 'Entregada',
-                cancelled: 'Cancelada',
-              };
-              return <Tag color={statusColor[status] ?? 'default'}>{labels[status] ?? status}</Tag>;
-            },
+            render: (status: string) => (
+              <Tag color={statusColor[status] ?? 'default'}>
+                {ORDER_STATUS_LABELS[status as keyof typeof ORDER_STATUS_LABELS] ?? status}
+              </Tag>
+            ),
           },
           {
             title: 'Total',
@@ -117,7 +134,27 @@ const MyOrdersPage = () => {
             key: 'createdAt',
             render: (value: string) => new Date(value).toLocaleString(),
           },
+          {
+            title: 'Acciones',
+            key: 'actions',
+            width: 80,
+            render: (_, row: OrderEntity) => (
+              <Tooltip title="Ver productos">
+                <Button
+                  type="text"
+                  icon={<EyeOutlined />}
+                  aria-label="Ver productos de la orden"
+                  onClick={() => setProductsModal({ open: true, order: row })}
+                />
+              </Tooltip>
+            ),
+          },
         ]}
+      />
+      <OrderProductsModal
+        open={productsModal.open}
+        order={productsModal.order}
+        onClose={() => setProductsModal({ open: false, order: null })}
       />
     </section>
   );
