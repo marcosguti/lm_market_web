@@ -2,8 +2,11 @@ import { Alert, Button, Form, Input, Select } from 'antd';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import PhoneInput from '../../components/PhoneInput';
 import SEO from '../../components/SEO';
 import { useAuth } from '../../context/AuthContext';
+import { isValidPersonName } from '../../utils/personName';
+import { isValidPhone } from '../../utils/phone';
 
 const NUMBER_ID_TYPE_OPTIONS = [
   { label: 'V', value: 'V' },
@@ -24,6 +27,7 @@ const Register = () => {
     numberIdType: string;
     numberId: string;
     password: string;
+    phone?: string;
   }>();
 
   const handleSubmit = async (values: {
@@ -33,6 +37,7 @@ const Register = () => {
     numberIdType: string;
     numberId: string;
     password: string;
+    phone?: string;
   }) => {
     setError('');
     setLoading(true);
@@ -43,13 +48,22 @@ const Register = () => {
       numberIdType: values.numberIdType,
       numberId: values.numberId,
       password: values.password,
+      phone: values.phone,
     });
     setLoading(false);
     if (result.error) {
       setError(result.error);
       return;
     }
-    navigate('/', { replace: true });
+    navigate('/verificar-email', {
+      replace: true,
+      state: {
+        codeExpiresInSeconds: result.codeExpiresInSeconds,
+        codeSent: result.codeSent ?? true,
+        email: result.email ?? values.email,
+        verificationContext: 'register',
+      },
+    });
   };
 
   return (
@@ -82,18 +96,38 @@ const Register = () => {
           <Form.Item
             label="Nombre *"
             name="firstName"
-            rules={[{ required: true, message: 'El nombre es obligatorio' }]}
+            rules={[
+              { required: true, message: 'El nombre es obligatorio' },
+              {
+                validator: async (_, value?: string) => {
+                  if (!value?.trim()) return;
+                  if (!isValidPersonName(value)) {
+                    throw new Error('Solo puede contener letras');
+                  }
+                },
+              },
+            ]}
           >
             <Input className="h-[40px] rounded border-gray-300" onChange={() => setError('')} />
           </Form.Item>
           <Form.Item
             label="Apellido *"
             name="lastName"
-            rules={[{ required: true, message: 'El apellido es obligatorio' }]}
+            rules={[
+              { required: true, message: 'El apellido es obligatorio' },
+              {
+                validator: async (_, value?: string) => {
+                  if (!value?.trim()) return;
+                  if (!isValidPersonName(value)) {
+                    throw new Error('Solo puede contener letras');
+                  }
+                },
+              },
+            ]}
           >
             <Input className="h-[40px] rounded border-gray-300" onChange={() => setError('')} />
           </Form.Item>
-          <div className="flex items-end gap-[12px]">
+          <div className="flex items-start gap-[12px]">
             <Form.Item
               label="Tipo ID"
               name="numberIdType"
@@ -113,9 +147,25 @@ const Register = () => {
               rules={[{ required: true, message: 'Este campo es obligatorio' }]}
               className="flex-1"
             >
-              <Input className="rounded border-gray-300" onChange={() => setError('')} />
+              <Input className="h-[40px] rounded border-gray-300" onChange={() => setError('')} />
             </Form.Item>
           </div>
+          <Form.Item
+            label="Teléfono (opcional)"
+            name="phone"
+            rules={[
+              {
+                validator: async (_, value?: string) => {
+                  if (!value) return;
+                  if (!isValidPhone(value)) {
+                    throw new Error('Ingresa un teléfono válido');
+                  }
+                },
+              },
+            ]}
+          >
+            <PhoneInput />
+          </Form.Item>
           <Form.Item
             label="Contraseña * (mínimo 8 caracteres, incluir mayúsculas, minúsculas y números)"
             name="password"

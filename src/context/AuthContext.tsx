@@ -23,9 +23,33 @@ export interface User {
   firstName: string;
   lastName: string;
   numberId: string;
+  numberIdType?: string;
   type: string;
   address?: string;
   phone?: string;
+  phoneVerified?: boolean;
+  emailVerified?: boolean;
+}
+
+interface LoginResult {
+  code?: string;
+  codeExpiresInSeconds?: number;
+  email?: string;
+  error?: string;
+}
+
+interface RegisterResult {
+  codeExpiresInSeconds?: number;
+  codeSent?: boolean;
+  email?: string;
+  error?: string;
+  requiresVerification?: boolean;
+}
+
+interface SendCodeResult {
+  code?: string;
+  codeExpiresInSeconds?: number;
+  error?: string;
 }
 
 interface AuthState {
@@ -36,7 +60,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ error?: string }>;
-  login: (email: string, password: string) => Promise<{ error?: string }>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   register: (data: {
     email: string;
@@ -45,9 +69,15 @@ interface AuthContextValue extends AuthState {
     numberIdType: string;
     firstName?: string;
     lastName?: string;
-  }) => Promise<{ error?: string }>;
+    phone?: string;
+  }) => Promise<RegisterResult>;
+  sendVerificationCode: (email: string) => Promise<SendCodeResult>;
+  sendLoginCode: (email: string) => Promise<SendCodeResult>;
+  verifyEmail: (email: string, code: string) => Promise<{ code?: string; error?: string }>;
+  verifyLoginCode: (email: string, code: string) => Promise<{ code?: string; error?: string }>;
   requestPasswordReset: (email: string) => Promise<{ error?: string }>;
   resetPassword: (token: string, newPassword: string) => Promise<{ error?: string }>;
+  validatePasswordResetToken: (token: string) => Promise<{ error?: string }>;
   updateProfile: (data: {
     address?: string;
     firstName?: string;
@@ -173,14 +203,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [state.user]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { data, error, status } = await request<{
-      accessToken: string;
-      refreshToken?: string;
-      user: User;
-    }>('/api/auth/login', { email, password, deviceId: getDeviceId() });
-    if (error || status !== 200 || !data?.accessToken) {
-      return { error: (data as { error?: string })?.error ?? error ?? 'Error al iniciar sesión' };
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+    const res = await fetch(apiUrl('/api/auth/login'), {
+      body: JSON.stringify({ email, password, deviceId: getDeviceId() }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 403 && data.code === 'EMAIL_NOT_VERIFIED') {
+      return {
+        code: data.code,
+        codeExpiresInSeconds: data.codeExpiresInSeconds as number | undefined,
+        email: data.email ?? email,
+      };
+    }
+    if (!res.ok || !data.accessToken) {
+      return { error: data.error ?? 'Error al iniciar sesión' };
     }
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
@@ -213,36 +251,141 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       numberIdType: string;
       firstName?: string;
       lastName?: string;
-    }) => {
+      phone?: string;
+    }): Promise<RegisterResult> => {
       const {
         data: res,
         error,
         status,
-      } = await request<{ accessToken: string; refreshToken?: string; user: User }>(
-        '/api/auth/register',
-        {
-          email: data.email,
-          firstName: data.firstName ?? '',
-          lastName: data.lastName ?? '',
-          numberId: data.numberId,
-          numberIdType: data.numberIdType,
-          password: data.password,
-          deviceId: getDeviceId(),
-        }
-      );
-      if (error || (status !== 201 && status !== 200) || !res?.accessToken) {
+      } = await request<{
+        codeExpiresInSeconds?: number;
+        codeSent?: boolean;
+        email: string;
+        message: string;
+        requiresVerification: boolean;
+      }>('/api/auth/register', {
+        email: data.email,
+        firstName: data.firstName ?? '',
+        lastName: data.lastName ?? '',
+        numberId: data.numberId,
+        numberIdType: data.numberIdType,
+        password: data.password,
+        phone: data.phone ?? '',
+        deviceId: getDeviceId(),
+      });
+      if (error || status !== 201 || !res?.requiresVerification) {
         return { error: (res as { error?: string })?.error ?? error ?? 'Error al registrarse' };
       }
-      localStorage.setItem(TOKEN_KEY, res.accessToken);
-      if (res.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
-      }
-      localStorage.setItem(USER_KEY, JSON.stringify(res.user));
-      setState({ isLoading: false, token: res.accessToken, user: res.user });
-      return {};
+      return {
+        codeExpiresInSeconds: res.codeExpiresInSeconds,
+        codeSent: res.codeSent,
+        email: res.email,
+        requiresVerification: true,
+      };
     },
     []
   );
+
+  const sendVerificationCode = useCallback(async (email: string): Promise<SendCodeResult> => {
+    const res = await fetch(apiUrl('/api/auth/verify-email/send'), {
+      body: JSON.stringify({ email }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 429 && data.code === 'CODE_STILL_VALID') {
+      return {
+        code: data.code,
+        codeExpiresInSeconds: data.codeExpiresInSeconds as number,
+        error: data.error as string,
+      };
+    }
+
+    if (!res.ok) {
+      return { error: (data.error as string) ?? 'No se pudo enviar el código' };
+    }
+
+    return { codeExpiresInSeconds: data.codeExpiresInSeconds as number | undefined };
+  }, []);
+
+  const verifyEmail = useCallback(async (email: string, code: string) => {
+    const { data, error, status } = await request<{
+      accessToken: string;
+      refreshToken?: string;
+      user: User;
+    }>('/api/auth/verify-email', {
+      code,
+      deviceId: getDeviceId(),
+      email,
+    });
+    if (error || status !== 200 || !data?.accessToken) {
+      const errData = data as { code?: string; error?: string };
+      return {
+        code: errData?.code,
+        error: errData?.error ?? error ?? 'Código inválido',
+      };
+    }
+    localStorage.setItem(TOKEN_KEY, data.accessToken);
+    if (data.refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    setState({ isLoading: false, token: data.accessToken, user: data.user });
+    return {};
+  }, []);
+
+  const sendLoginCode = useCallback(async (email: string): Promise<SendCodeResult> => {
+    const res = await fetch(apiUrl('/api/auth/login-code/send'), {
+      body: JSON.stringify({ email }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 429 && data.code === 'CODE_STILL_VALID') {
+      return {
+        code: data.code,
+        codeExpiresInSeconds: data.codeExpiresInSeconds as number,
+        error: data.error as string,
+      };
+    }
+
+    if (!res.ok) {
+      return {
+        code: data.code as string | undefined,
+        error: (data.error as string) ?? 'No se pudo enviar el código',
+      };
+    }
+
+    return { codeExpiresInSeconds: data.codeExpiresInSeconds as number | undefined };
+  }, []);
+
+  const verifyLoginCode = useCallback(async (email: string, code: string) => {
+    const { data, error, status } = await request<{
+      accessToken: string;
+      refreshToken?: string;
+      user: User;
+    }>('/api/auth/login-code/verify', {
+      code,
+      deviceId: getDeviceId(),
+      email,
+    });
+    if (error || status !== 200 || !data?.accessToken) {
+      const errData = data as { code?: string; error?: string };
+      return {
+        code: errData?.code,
+        error: errData?.error ?? error ?? 'Código inválido',
+      };
+    }
+    localStorage.setItem(TOKEN_KEY, data.accessToken);
+    if (data.refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    setState({ isLoading: false, token: data.accessToken, user: data.user });
+    return {};
+  }, []);
 
   const requestPasswordReset = useCallback(async (email: string) => {
     const { error } = await request('/api/auth/recover-password/request', { email });
@@ -255,6 +398,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       newPassword,
       token,
     });
+    if (error || status !== 200) {
+      return { error: (error as string) ?? 'Token inválido o expirado' };
+    }
+    return {};
+  }, []);
+
+  const validatePasswordResetToken = useCallback(async (token: string) => {
+    const { error, status } = await getRequest(
+      `/api/auth/recover-password/validate?token=${encodeURIComponent(token)}`
+    );
     if (error || status !== 200) {
       return { error: (error as string) ?? 'Token inválido o expirado' };
     }
@@ -298,7 +451,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       requestPasswordReset,
       resetPassword,
+      sendVerificationCode,
+      sendLoginCode,
       updateProfile,
+      validatePasswordResetToken,
+      verifyEmail,
+      verifyLoginCode,
     }),
     [
       state,
@@ -308,7 +466,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       requestPasswordReset,
       resetPassword,
+      sendVerificationCode,
+      sendLoginCode,
       updateProfile,
+      validatePasswordResetToken,
+      verifyEmail,
+      verifyLoginCode,
     ]
   );
 

@@ -1,19 +1,44 @@
-import { Alert, Button, Form, Input } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Form, Input, Spin } from 'antd';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import SEO from '../../components/SEO';
 import { useAuth } from '../../context/AuthContext';
 
 const ResetPassword = () => {
-  const { resetPassword } = useAuth();
+  const { resetPassword, validatePasswordResetToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const [error, setError] = useState('');
+  const [tokenError, setTokenError] = useState('');
+  const [validatingToken, setValidatingToken] = useState(Boolean(token));
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [form] = Form.useForm<{ confirmPassword: string; newPassword: string }>();
+
+  useEffect(() => {
+    if (!token) {
+      setValidatingToken(false);
+      return;
+    }
+
+    let cancelled = false;
+    setValidatingToken(true);
+    setTokenError('');
+
+    void validatePasswordResetToken(token).then((result) => {
+      if (cancelled) return;
+      setValidatingToken(false);
+      if (result.error) {
+        setTokenError(result.error);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, validatePasswordResetToken]);
 
   const handleSubmit = async (values: { confirmPassword: string; newPassword: string }) => {
     setError('');
@@ -28,25 +53,44 @@ const ResetPassword = () => {
     setTimeout(() => navigate('/iniciar-sesion'), 3000);
   };
 
-  if (!token) {
+  if (!token || tokenError) {
     return (
       <>
-        <SEO
-          title="Restablecer contraseña"
-          description="Restablece tu contraseña en LM Market."
-        />
+        <SEO title="Restablecer contraseña" description="Restablece tu contraseña en LM Market." />
         <div className="mx-auto max-w-md px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
           <h1 className="mb-[24px] text-3xl font-bold text-gray-900">Restablecer contraseña</h1>
-          <Alert
-            className="mb-[16px]"
-            message="Enlace inválido"
-            description="El enlace de recuperación no es válido o ha expirado. Solicita uno nuevo."
-            showIcon
-            type="error"
-          />
-          <Link className="text-primary hover:underline" to="/recuperar-password">
-            Solicitar nuevo enlace
-          </Link>
+          {validatingToken ? (
+            <div className="flex justify-center py-[32px]">
+              <Spin size="large" />
+            </div>
+          ) : (
+            <>
+              <Alert
+                className="mb-[16px]"
+                message="Enlace inválido"
+                description={
+                  tokenError ||
+                  'El enlace de recuperación no es válido o ha expirado. Solicita uno nuevo.'
+                }
+                showIcon
+                type="error"
+              />
+              <Link className="text-primary hover:underline" to="/recuperar-password">
+                Solicitar nuevo enlace
+              </Link>
+            </>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  if (validatingToken) {
+    return (
+      <>
+        <SEO title="Restablecer contraseña" description="Restablece tu contraseña en LM Market." />
+        <div className="mx-auto flex max-w-md justify-center px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
+          <Spin size="large" />
         </div>
       </>
     );

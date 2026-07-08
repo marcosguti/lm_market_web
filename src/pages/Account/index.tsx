@@ -1,9 +1,11 @@
-import { Alert, Button, Form, Input } from 'antd';
+import { Alert, Button, Form, Input, Tag } from 'antd';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import PhoneInput from '../../components/PhoneInput';
 import SEO from '../../components/SEO';
 import { useAuth } from '../../context/AuthContext';
+import { isValidPhone } from '../../utils/phone';
 
 const Account = () => {
   const { user, updateProfile, changePassword } = useAuth();
@@ -99,7 +101,10 @@ const Account = () => {
               <Input disabled value={user.email} />
             </Form.Item>
             <Form.Item label="Identificación (cédula)">
-              <Input disabled value={user.numberId} />
+              <Input
+                disabled
+                value={user.numberIdType ? `${user.numberIdType}-${user.numberId}` : user.numberId}
+              />
             </Form.Item>
             <Form.Item
               label="Nombre"
@@ -115,8 +120,26 @@ const Account = () => {
             >
               <Input />
             </Form.Item>
-            <Form.Item label="Teléfono" name="phone">
-              <Input />
+            <Form.Item
+              label="Teléfono"
+              name="phone"
+              rules={[
+                {
+                  validator: async (_, value?: string) => {
+                    if (!value) return;
+                    if (!isValidPhone(value)) {
+                      throw new Error('Ingresa un teléfono válido');
+                    }
+                  },
+                },
+              ]}
+            >
+              <PhoneInput />
+            </Form.Item>
+            <Form.Item label="Número verificado">
+              <Tag color={user.phoneVerified ? 'success' : 'default'}>
+                {user.phoneVerified ? 'Verificado' : 'No verificado'}
+              </Tag>
             </Form.Item>
             <Form.Item label="Dirección" name="address">
               <Input />
@@ -155,7 +178,10 @@ const Account = () => {
               rules={[
                 { required: true, message: 'Requerido' },
                 { min: 8, message: 'Mínimo 8 caracteres' },
-                { pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, message: 'Debe incluir mayúsculas, minúsculas y números' },
+                {
+                  pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
+                  message: 'Debe incluir mayúsculas, minúsculas y números',
+                },
               ]}
             >
               <Input.Password />

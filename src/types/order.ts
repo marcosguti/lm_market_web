@@ -12,6 +12,7 @@ export type PaymentMethod = 'cash' | 'zelle' | 'mobilePayment' | 'binance';
 export interface OrderLine {
   code: string;
   description: null | string;
+  imageUrl?: null | string;
   lineTotal: number;
   name: string;
   quantity: number;
@@ -48,6 +49,7 @@ export interface OrderEntity {
   products: OrderLine[];
   status: OrderStatus;
   storeId: null | string;
+  storeName?: null | string;
   totalAmount: number;
   updatedAt: string;
   userId: string;

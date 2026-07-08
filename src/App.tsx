@@ -6,6 +6,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import OrganizationSchema from './components/OrganizationSchema';
 import ProtectedRoute from './components/ProtectedRoute';
+import VerifyEmailRoute from './components/VerifyEmailRoute';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import About from './pages/About';
@@ -21,10 +22,12 @@ import DeliveryOrdersPage from './pages/DeliveryOrders';
 import FAQ from './pages/FAQ';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import LoginCode from './pages/LoginCode';
 import MyOrdersPage from './pages/MyOrders';
 import RecoverPassword from './pages/RecoverPassword';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import Terms from './pages/Terms';
 import Users from './pages/Users';
 import GlobalStyles from './styles/GlobalStyles';
@@ -58,7 +61,16 @@ function App() {
                   <Route path="/contacto" element={<Contact />} />
                   <Route path="/registro" element={<Register />} />
                   <Route path="/iniciar-sesion" element={<Login />} />
+                  <Route path="/iniciar-sesion/codigo" element={<LoginCode />} />
                   <Route path="/recuperar-password" element={<RecoverPassword />} />
+                  <Route
+                    path="/verificar-email"
+                    element={
+                      <VerifyEmailRoute>
+                        <VerifyEmail />
+                      </VerifyEmailRoute>
+                    }
+                  />
                   <Route path="/restablecer-password" element={<ResetPassword />} />
                   <Route
                     path="/cuenta"

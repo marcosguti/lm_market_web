@@ -119,6 +119,12 @@ const MyOrdersPage = () => {
             ),
           },
           {
+            title: 'Sede',
+            dataIndex: 'storeName',
+            key: 'storeName',
+            render: (value: string | null | undefined) => value?.trim() || '—',
+          },
+          {
             title: 'Total',
             dataIndex: 'totalAmount',
             key: 'totalAmount',

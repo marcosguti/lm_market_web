@@ -11,12 +11,14 @@ export interface AdminUser {
   address: null | string;
   createdAt: string;
   email: string;
+  emailVerified: boolean;
   firstName: string;
   id: string;
   lastName: string;
   numberId: string;
   numberIdType: NumberIdType;
   phone: null | string;
+  phoneVerified: boolean;
   type: UserType;
   updatedAt: string;
 }
@@ -83,5 +85,11 @@ export async function patchAdminUser(
 export async function deleteAdminUser(id: string) {
   return api<{ message: string }>(`/api/admin/users/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export async function verifyAdminUserEmail(id: string) {
+  return api<{ user: AdminUser }>(`/api/admin/users/${id}/verify-email`, {
+    method: 'POST',
   });
 }

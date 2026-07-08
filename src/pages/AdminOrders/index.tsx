@@ -207,6 +207,13 @@ const AdminOrdersPage = () => {
               },
             },
             {
+              title: 'Sede',
+              dataIndex: 'storeName',
+              key: 'storeName',
+              width: 140,
+              render: (value: string | null | undefined) => value?.trim() || '—',
+            },
+            {
               title: 'Total',
               dataIndex: 'totalAmount',
               key: 'totalAmount',

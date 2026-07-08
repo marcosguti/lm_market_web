@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Header from '../index';
 
@@ -10,16 +10,25 @@ vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => vi.fn(),
-  };
-});
+vi.mock('../../../context/CartContext', () => ({
+  useCart: () => ({
+    cart: [],
+    cartSubtotal: 0,
+    clearCart: vi.fn(),
+    flushCartSync: vi.fn(),
+    removeFromCart: vi.fn(),
+    totalItemCount: 0,
+    updateQuantity: vi.fn(),
+  }),
+}));
+
+vi.mock('../../../api/notifications', () => ({
+  getNotifications: vi.fn().mockResolvedValue({ ok: true, data: { data: [] } }),
+  markNotificationRead: vi.fn(),
+}));
 
 vi.mock('../../../realtime/socket', () => ({
-  connectSocket: vi.fn(),
+  connectSocket: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })),
   disconnectSocket: vi.fn(),
   getSocket: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })),
 }));
@@ -27,6 +36,16 @@ vi.mock('../../../realtime/socket', () => ({
 describe('Header RBAC menu', () => {
   beforeEach(() => {
     useAuthMock.mockReset();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
   });
 
   it('shows account entry for authenticated client', () => {
@@ -38,9 +57,9 @@ describe('Header RBAC menu', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
-    expect(screen.getByText('Mi cuenta')).toBeInTheDocument();
+    expect(screen.getAllByText('Mi cuenta').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows account entry for authenticated admin', () => {
@@ -52,9 +71,27 @@ describe('Header RBAC menu', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
-    expect(screen.getByText('Mi cuenta')).toBeInTheDocument();
+    expect(screen.getAllByText('Mi cuenta').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('Iniciar sesión')).not.toBeInTheDocument();
+    expect(screen.queryByText('Registro')).not.toBeInTheDocument();
+  });
+
+  it('shows login and register actions for guests', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>
+    );
+    expect(screen.getByText('Iniciar sesión')).toBeInTheDocument();
+    expect(screen.getAllByText('Registro').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryAllByText('Mi cuenta')).toHaveLength(0);
   });
 });

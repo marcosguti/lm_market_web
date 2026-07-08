@@ -18,9 +18,11 @@
     "@emotion/react": "^11.14.0",
     "antd": "^6.3.2",
     "framer-motion": "^12.23.26",
+    "libphonenumber-js": "^1.12.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-helmet-async": "^2.0.5",
+    "react-phone-number-input": "^3.4.12",
     "react-router-dom": "^7.11.0",
     "socket.io-client": "^4.8.3"
   },

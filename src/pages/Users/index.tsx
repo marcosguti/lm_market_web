@@ -9,9 +9,12 @@ import {
   deleteAdminUser,
   getAdminUsers,
   patchAdminUser,
+  verifyAdminUserEmail,
 } from '../../api/adminUsers';
+import PhoneInput from '../../components/PhoneInput';
 import { NUMBER_ID_TYPE_OPTIONS } from '../../constants/numberIdType';
 import { useAuth } from '../../context/AuthContext';
+import { isValidPhone } from '../../utils/phone';
 
 const { Title } = Typography;
 
@@ -182,10 +185,36 @@ const Users = () => {
     });
   };
 
+  const confirmVerifyEmail = (row: AdminUser) => {
+    Modal.confirm({
+      cancelText: 'Cancelar',
+      content: `¿Marcar el email de ${row.firstName} ${row.lastName} (${row.email}) como verificado? El usuario podrá iniciar sesión sin ingresar el código.`,
+      okText: 'Verificar',
+      onOk: async () => {
+        const res = await verifyAdminUserEmail(row.id);
+        if (!res.ok) {
+          void message.error((res.data as { error?: string })?.error ?? 'No se pudo verificar');
+          return Promise.reject(new Error('verify failed'));
+        }
+        void message.success('Email verificado');
+        void load();
+      },
+      title: 'Verificar email',
+    });
+  };
+
   const columns: ColumnsType<AdminUser> = [
     {
       dataIndex: 'email',
       key: 'email',
+      render: (email: string, row) => (
+        <div className="flex flex-col gap-1">
+          <span>{email}</span>
+          <Tag color={row.emailVerified ? 'green' : 'orange'}>
+            {row.emailVerified ? 'Verificado' : 'Pendiente'}
+          </Tag>
+        </div>
+      ),
       title: 'Email',
     },
     {
@@ -212,6 +241,11 @@ const Users = () => {
           <Button size="small" type="link" onClick={() => openEdit(row)}>
             Editar
           </Button>
+          {!row.emailVerified ? (
+            <Button size="small" type="link" onClick={() => confirmVerifyEmail(row)}>
+              Verificar email
+            </Button>
+          ) : null}
           {currentUser?.id !== row.id ? (
             <Button danger size="small" type="link" onClick={() => confirmDelete(row)}>
               Eliminar
@@ -305,8 +339,21 @@ const Users = () => {
           <Form.Item label="Rol" name="type" rules={[{ required: true }]}>
             <Select options={typeOptions} />
           </Form.Item>
-          <Form.Item label="Teléfono" name="phone">
-            <Input />
+          <Form.Item
+            label="Teléfono"
+            name="phone"
+            rules={[
+              {
+                validator: async (_, value?: string) => {
+                  if (!value) return;
+                  if (!isValidPhone(value)) {
+                    throw new Error('Ingresa un teléfono válido');
+                  }
+                },
+              },
+            ]}
+          >
+            <PhoneInput />
           </Form.Item>
           <Form.Item label="Dirección" name="address">
             <Input />
@@ -377,8 +424,21 @@ const Users = () => {
               <Select options={editTypeOptions} />
             </Form.Item>
           )}
-          <Form.Item label="Teléfono" name="phone">
-            <Input />
+          <Form.Item
+            label="Teléfono"
+            name="phone"
+            rules={[
+              {
+                validator: async (_, value?: string) => {
+                  if (!value) return;
+                  if (!isValidPhone(value)) {
+                    throw new Error('Ingresa un teléfono válido');
+                  }
+                },
+              },
+            ]}
+          >
+            <PhoneInput />
           </Form.Item>
           <Form.Item label="Dirección" name="address">
             <Input />

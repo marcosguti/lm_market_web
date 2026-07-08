@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import SEO from '../../components/SEO';
+import VerifyEmailLoginModal from '../../components/VerifyEmailLoginModal';
 import { useAuth } from '../../context/AuthContext';
+import type { EmailVerificationLocationState } from '../../types/emailVerification';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,6 +14,10 @@ const Login = () => {
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verifyModal, setVerifyModal] = useState<{
+    codeExpiresInSeconds: number;
+    email: string;
+  } | null>(null);
   const [form] = Form.useForm<{ email: string; password: string }>();
 
   const handleSubmit = async (values: { email: string; password: string }) => {
@@ -19,11 +25,23 @@ const Login = () => {
     setLoading(true);
     const result = await login(values.email, values.password);
     setLoading(false);
+    if (result.code === 'EMAIL_NOT_VERIFIED') {
+      setVerifyModal({
+        codeExpiresInSeconds: result.codeExpiresInSeconds ?? 0,
+        email: result.email ?? values.email,
+      });
+      return;
+    }
     if (result.error) {
       setError(result.error);
       return;
     }
     navigate(from, { replace: true });
+  };
+
+  const handleContinueVerification = (state: EmailVerificationLocationState) => {
+    setVerifyModal(null);
+    navigate('/verificar-email', { replace: true, state });
   };
 
   return (
@@ -73,6 +91,11 @@ const Login = () => {
           </Button>
         </Form>
         <p className="mt-[16px] text-center text-sm text-gray-600">
+          <Link className="text-primary hover:underline" to="/iniciar-sesion/codigo">
+            Iniciar sesión con código
+          </Link>
+        </p>
+        <p className="mt-[8px] text-center text-sm text-gray-600">
           <Link className="text-primary hover:underline" to="/recuperar-password">
             ¿Olvidaste tu contraseña?
           </Link>
@@ -84,6 +107,13 @@ const Login = () => {
           </Link>
         </p>
       </div>
+      <VerifyEmailLoginModal
+        email={verifyModal?.email ?? ''}
+        initialExpiresInSeconds={verifyModal?.codeExpiresInSeconds ?? 0}
+        open={verifyModal !== null}
+        onClose={() => setVerifyModal(null)}
+        onContinue={handleContinueVerification}
+      />
     </>
   );
 };

@@ -2,6 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+.phone-input-antd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.phone-input-antd .PhoneInputCountry {
+  margin-right: 4px;
+}
+
+.phone-input-antd .PhoneInputInput {
+  flex: 1;
+  min-height: 32px;
+  padding: 4px 11px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.phone-input-antd .PhoneInputInput:focus {
+  border-color: #4096ff;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
+  outline: none;
+}
+
+.lm-otp.ant-otp {
+  display: inline-flex !important;
+  width: fit-content !important;
+  max-width: none !important;
+  gap: 8px;
+}
+
+.lm-otp.ant-otp .ant-otp-input-wrapper {
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+}
+
+.lm-otp.ant-otp input.ant-otp-input.ant-input,
+.lm-otp.ant-otp .lm-otp-cell {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  flex: 0 0 32px !important;
+  padding: 0 !important;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  box-sizing: border-box;
+}
+
 @layer base {
   html {
     overflow-x: hidden;
@@ -23,5 +77,9 @@
   img {
     max-width: 100%;
     height: auto;
+  }
+  .lm-otp,
+  .lm-otp * {
+    max-width: none;
   }
 }

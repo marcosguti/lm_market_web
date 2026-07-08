@@ -25,8 +25,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { connectSocket } from '../../realtime/socket';
 import { theme } from '../../theme';
+import type { EmailVerificationLocationState } from '../../types/emailVerification';
 import { getMaxOrderQuantity } from '../../utils/cartStock';
 import { formatNotificationBody } from '../../utils/notification';
+import VerifyEmailLoginModal from '../VerifyEmailLoginModal';
+
+const HEADER_BTN_CLASS =
+  '!h-9 !min-h-9 !inline-flex !items-center !justify-center !px-4 !leading-none';
+const HEADER_ICON_BTN_CLASS =
+  '!h-9 !w-9 !min-h-9 !min-w-9 !inline-flex !items-center !justify-center !p-0';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -44,6 +51,10 @@ const Header = () => {
   const [checkoutSyncing, setCheckoutSyncing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [verifyModal, setVerifyModal] = useState<{
+    codeExpiresInSeconds: number;
+    email: string;
+  } | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<
     {
@@ -75,12 +86,26 @@ const Header = () => {
     setLoginLoading(true);
     const result = await login(values.email, values.password);
     setLoginLoading(false);
+    if (result.code === 'EMAIL_NOT_VERIFIED') {
+      setLoginModalOpen(false);
+      form.resetFields();
+      setVerifyModal({
+        codeExpiresInSeconds: result.codeExpiresInSeconds ?? 0,
+        email: result.email ?? values.email,
+      });
+      return;
+    }
     if (result.error) {
       setLoginError(result.error);
       throw new Error(result.error);
     }
     setLoginModalOpen(false);
     form.resetFields();
+  };
+
+  const handleContinueVerification = (state: EmailVerificationLocationState) => {
+    setVerifyModal(null);
+    navigate('/verificar-email', { replace: true, state });
   };
 
   const handleLogout = () => {
@@ -307,32 +332,29 @@ const Header = () => {
               <Skeleton.Button active size="default" style={{ height: 36, minWidth: 180 }} />
             ) : user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-                <Button
-                  type="text"
-                  className="flex items-center gap-2 text-gray-700 hover:text-primary"
-                >
+                <Button type="default" className={`${HEADER_BTN_CLASS} !gap-2 text-gray-700`}>
                   <span className="hidden sm:inline">
                     {user.firstName} {user.lastName}
                   </span>
-                  <span className="rounded-md bg-primary/10 px-[12px] py-[8px] text-primary">
-                    Mi cuenta
-                  </span>
+                  <span className="font-medium text-primary">Mi cuenta</span>
                 </Button>
               </Dropdown>
             ) : (
-              <Button
-                className="rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90"
-                onClick={handleOpenLogin}
-                type="primary"
-              >
-                Iniciar sesión
-              </Button>
+              <>
+                <Button className={HEADER_BTN_CLASS} onClick={handleOpenLogin} type="primary">
+                  Iniciar sesión
+                </Button>
+                <Link className="no-underline hover:no-underline" to="/registro">
+                  <Button className={HEADER_BTN_CLASS} type="default">
+                    Registro
+                  </Button>
+                </Link>
+              </>
             )}
-            <Link
-              to="/contacto"
-              className="rounded-md bg-primary px-4 py-2 text-white no-underline transition-colors hover:bg-primary/90 hover:no-underline"
-            >
-              Contacto
+            <Link className="no-underline hover:no-underline" to="/contacto">
+              <Button className={HEADER_BTN_CLASS} type="primary">
+                Contacto
+              </Button>
             </Link>
             {user ? (
               <Popover
@@ -340,7 +362,7 @@ const Header = () => {
                 open={notificationsOpen}
                 onOpenChange={setNotificationsOpen}
                 content={
-                  <div className="w-[320px] max-w-[80vw]">
+                  <div className="max-h-[70vh] w-[320px] max-w-[80vw] overflow-y-auto">
                     {notifications.length === 0 ? (
                       <p className="m-0 text-sm text-gray-500">Sin notificaciones</p>
                     ) : (
@@ -398,6 +420,7 @@ const Header = () => {
                 >
                   <Button
                     aria-label="Notificaciones"
+                    className={HEADER_ICON_BTN_CLASS}
                     icon={<BellOutlined className="size-5" />}
                     type="text"
                   />
@@ -412,8 +435,8 @@ const Header = () => {
             >
               <Button
                 aria-label="Carrito"
-                className="!text-[28px]"
-                icon={<ShoppingCartOutlined className="size-8" />}
+                className={HEADER_ICON_BTN_CLASS}
+                icon={<ShoppingCartOutlined className="size-5" />}
                 type="text"
                 onClick={() => setCartDrawerOpen(true)}
               />
@@ -428,8 +451,8 @@ const Header = () => {
             >
               <Button
                 aria-label="Carrito"
-                icon={<ShoppingCartOutlined className="size-6" />}
-                size="small"
+                className={HEADER_ICON_BTN_CLASS}
+                icon={<ShoppingCartOutlined className="size-5" />}
                 type="text"
                 onClick={() => {
                   setMobileMenuOpen(false);
@@ -438,21 +461,28 @@ const Header = () => {
               />
             </Badge>
             {isLoading ? (
-              <Skeleton.Button active size="small" style={{ height: 24, minWidth: 60 }} />
+              <Skeleton.Button active size="default" style={{ height: 36, minWidth: 60 }} />
             ) : user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-                <Button size="small" type="text">
+                <Button className={HEADER_BTN_CLASS} type="default">
                   {user.firstName}
                 </Button>
               </Dropdown>
             ) : (
-              <Button onClick={handleOpenLogin} size="small" type="primary">
-                Entrar
-              </Button>
+              <>
+                <Button className={HEADER_BTN_CLASS} onClick={handleOpenLogin} type="primary">
+                  Entrar
+                </Button>
+                <Link className="no-underline hover:no-underline" to="/registro">
+                  <Button className={HEADER_BTN_CLASS} type="default">
+                    Registro
+                  </Button>
+                </Link>
+              </>
             )}
-              <Button
-                aria-label="Alternar menú"
-                className="md:hidden"
+            <Button
+              aria-label="Alternar menú"
+              className={`${HEADER_ICON_BTN_CLASS} md:hidden`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               type="text"
             >
@@ -518,22 +548,36 @@ const Header = () => {
                   Cerrar sesión ({user.firstName})
                 </Button>
               ) : (
-                <Button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    handleOpenLogin();
-                  }}
-                  type="primary"
-                >
-                  Iniciar sesión
-                </Button>
+                <>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleOpenLogin();
+                    }}
+                    type="primary"
+                  >
+                    Iniciar sesión
+                  </Button>
+                  <Link
+                    className="no-underline hover:no-underline"
+                    to="/registro"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Button block type="default">
+                      Registro
+                    </Button>
+                  </Link>
+                </>
               )}
               <Link
-                className="rounded-md bg-primary px-[16px] py-[8px] text-center text-white no-underline transition-colors hover:bg-primary/90 hover:no-underline"
+                className="no-underline hover:no-underline"
                 to="/contacto"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Contacto
+                <Button block type="primary">
+                  Contacto
+                </Button>
               </Link>
             </div>
           </nav>
@@ -725,6 +769,13 @@ const Header = () => {
           <div className="flex flex-col items-center gap-2 text-center">
             <Link
               className="text-sm font-medium text-primary hover:text-primary/80 hover:underline"
+              to="/iniciar-sesion/codigo"
+              onClick={() => setLoginModalOpen(false)}
+            >
+              Iniciar sesión con código
+            </Link>
+            <Link
+              className="text-sm font-medium text-primary hover:text-primary/80 hover:underline"
               to="/recuperar-password"
               onClick={() => setLoginModalOpen(false)}
             >
@@ -743,6 +794,13 @@ const Header = () => {
           </div>
         </div>
       </Modal>
+      <VerifyEmailLoginModal
+        email={verifyModal?.email ?? ''}
+        initialExpiresInSeconds={verifyModal?.codeExpiresInSeconds ?? 0}
+        open={verifyModal !== null}
+        onClose={() => setVerifyModal(null)}
+        onContinue={handleContinueVerification}
+      />
     </header>
   );
 };
