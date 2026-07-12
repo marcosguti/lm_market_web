@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +10,23 @@ const navigateMock = vi.fn();
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../../../context/CartContext', () => ({
+  useCart: () => ({
+    cart: [],
+    cartSubtotal: 0,
+    clearCart: vi.fn(),
+    flushCartSync: vi.fn(),
+    removeFromCart: vi.fn(),
+    totalItemCount: 0,
+    updateQuantity: vi.fn(),
+  }),
+}));
+
+vi.mock('../../../api/notifications', () => ({
+  getNotifications: vi.fn().mockResolvedValue({ ok: true, data: { data: [] } }),
+  markNotificationRead: vi.fn(),
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -24,6 +41,23 @@ vi.mock('../../../realtime/socket', () => ({
   connectSocket: vi.fn(),
   disconnectSocket: vi.fn(),
   getSocket: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })),
+}));
+
+vi.mock('../../../components/VerifyEmailLoginModal', () => ({
+  default: ({
+    email,
+    open,
+  }: {
+    email: string;
+    open: boolean;
+  }) =>
+    open ? (
+      <div role="dialog">
+        <p>Verifica tu correo</p>
+        <p>Ya hay un código vigente. Revisa tu bandeja de entrada.</p>
+        <p>{email}</p>
+      </div>
+    ) : null,
 }));
 
 describe('Header login modal', () => {
@@ -52,13 +86,14 @@ describe('Header login modal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    fireEvent.change(screen.getByPlaceholderText('tu@email.com'), {
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByPlaceholderText('tu@email.com'), {
       target: { value: 'client@test.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), {
+    fireEvent.change(within(dialog).getByPlaceholderText('••••••••'), {
       target: { value: 'secret' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Entrar' }));
 
     await waitFor(() => {
       expect(screen.getByText('Verifica tu correo')).toBeInTheDocument();

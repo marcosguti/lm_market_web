@@ -25,6 +25,10 @@ import Users from '../index';
 describe('Users admin verify email', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(Modal.confirm).mockImplementation((config) => {
+      config.onOk?.();
+      return { destroy: vi.fn(), update: vi.fn() };
+    });
     mockGetAdminUsers.mockResolvedValue({
       ok: true,
       data: {
@@ -65,10 +69,6 @@ describe('Users admin verify email', () => {
 
   it('calls verify API on confirm', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(Modal, 'confirm').mockImplementation((config) => {
-      config.onOk?.();
-      return { destroy: vi.fn(), update: vi.fn() };
-    });
 
     render(<Users />);
     await user.click(await screen.findByText('Verificar email'));
@@ -76,6 +76,6 @@ describe('Users admin verify email', () => {
     await waitFor(() => {
       expect(mockVerifyAdminUserEmail).toHaveBeenCalledWith('u1');
     });
-    confirmSpy.mockRestore();
+    expect(Modal.confirm).toHaveBeenCalled();
   });
 });

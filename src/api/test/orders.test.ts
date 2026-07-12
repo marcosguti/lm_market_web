@@ -1,7 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as client from '../client';
-import { confirmOrderPayment } from '../orders';
+import {
+  claimDeliveryOrder,
+  confirmOrderPayment,
+  ensureCart,
+  getDeliveryAvailable,
+  getDeliveryMine,
+  getKitchenOrders,
+  getOrder,
+  getOrderHistory,
+  markDelivered,
+  patchOrderLines,
+} from '../orders';
 
 vi.mock('../client', () => ({
   api: vi.fn(),
@@ -30,5 +41,76 @@ describe('orders api', () => {
     expect(formData.get('reference')).toBe('REF1');
     expect(formData.get('paidAt')).toBe('2026-01-01T12:00:00.000Z');
     expect(formData.get('screenshot')).toBe(screenshot);
+  });
+
+  it('getKitchenOrders calls admin kitchen endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
+    await getKitchenOrders(1, 20);
+    expect(client.api).toHaveBeenCalledWith('/api/admin/orders/kitchen', {
+      params: { page: '1', pageSize: '20' },
+    });
+  });
+
+  it('getDeliveryAvailable calls delivery available endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
+    await getDeliveryAvailable(1, 50);
+    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/available', {
+      params: { page: '1', pageSize: '50' },
+    });
+  });
+
+  it('claimDeliveryOrder posts to claim endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
+    await claimDeliveryOrder('order-1');
+    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/order-1/claim', {
+      method: 'POST',
+    });
+  });
+
+  it('markDelivered patches delivered endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
+    await markDelivered('order-1');
+    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/order-1/delivered', {
+      method: 'PATCH',
+    });
+  });
+
+  it('ensureCart calls cart endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
+    await ensureCart('store-1');
+    expect(client.api).toHaveBeenCalledWith('/api/orders/cart', {
+      params: { storeId: 'store-1' },
+    });
+  });
+
+  it('getOrder fetches order by id', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
+    await getOrder('order-1');
+    expect(client.api).toHaveBeenCalledWith('/api/orders/order-1');
+  });
+
+  it('patchOrderLines sends lines payload', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
+    await patchOrderLines('order-1', [{ code: 'SKU', quantity: 2 }]);
+    expect(client.api).toHaveBeenCalledWith('/api/orders/order-1/lines', {
+      body: JSON.stringify({ lines: [{ code: 'SKU', quantity: 2 }] }),
+      method: 'PATCH',
+    });
+  });
+
+  it('getOrderHistory passes pagination', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
+    await getOrderHistory(1, 20);
+    expect(client.api).toHaveBeenCalledWith('/api/orders/history', {
+      params: { page: '1', pageSize: '20' },
+    });
+  });
+
+  it('getDeliveryMine calls mine endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
+    await getDeliveryMine(1, 20);
+    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/mine', {
+      params: { page: '1', pageSize: '20' },
+    });
   });
 });

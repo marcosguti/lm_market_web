@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ProtectedRoute from '../index';
@@ -13,9 +13,18 @@ vi.mock('../../../context/AuthContext', () => ({
 function renderRoute(allowedTypes?: string[]) {
   return render(
     <MemoryRouter initialEntries={['/protected']}>
-      <ProtectedRoute allowedTypes={allowedTypes}>
-        <div>Protected content</div>
-      </ProtectedRoute>
+      <Routes>
+        <Route
+          path="/protected"
+          element={
+            <ProtectedRoute allowedTypes={allowedTypes}>
+              <div>Protected content</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/iniciar-sesion" element={<div>login-redirect</div>} />
+        <Route path="/" element={<div>home-redirect</div>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -29,6 +38,7 @@ describe('ProtectedRoute', () => {
     useAuthMock.mockReturnValue({ user: null, isLoading: false });
     renderRoute(['client']);
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+    expect(screen.getByText('login-redirect')).toBeInTheDocument();
   });
 
   it('renders children for allowed client role', () => {
@@ -47,6 +57,7 @@ describe('ProtectedRoute', () => {
     });
     renderRoute(['client']);
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+    expect(screen.getByText('home-redirect')).toBeInTheDocument();
   });
 
   it('allows superAdmin on admin routes', () => {
@@ -65,6 +76,7 @@ describe('ProtectedRoute', () => {
     });
     renderRoute(['admin', 'superAdmin']);
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+    expect(screen.getByText('home-redirect')).toBeInTheDocument();
   });
 
   it('allows deliveryDriver on delivery route', () => {

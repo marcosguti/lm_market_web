@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as client from '../client';
-import { getPaymentConfig, verifyMobilePayment } from '../payments';
+import { getPaymentBanks, getPaymentConfig, verifyMobilePayment } from '../payments';
 
 vi.mock('../client', () => ({
   api: vi.fn(),
@@ -16,6 +16,12 @@ describe('payments api', () => {
     vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { megasoftEnabled: false } });
     await getPaymentConfig();
     expect(client.api).toHaveBeenCalledWith('/api/payments/config', { skipAuth: true });
+  });
+
+  it('getPaymentBanks calls banks endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { banks: [] } });
+    await getPaymentBanks();
+    expect(client.api).toHaveBeenCalledWith('/api/payments/banks', { skipAuth: true });
   });
 
   it('verifyMobilePayment posts JSON body', async () => {

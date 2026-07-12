@@ -11,7 +11,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--max-old-space-size=8192 vitest run",
+    "test:unit": "NODE_OPTIONS=--max-old-space-size=8192 vitest run --project unit",
+    "test:ui": "NODE_OPTIONS=--max-old-space-size=8192 vitest run --project ui",
+    "test:bisect": "NODE_OPTIONS=--max-old-space-size=8192 vitest run --reporter=verbose --bail=1",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -31,6 +34,7 @@
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

@@ -18,6 +18,48 @@ const sendVerificationCodeMock = vi.fn();
 
 
 
+vi.mock('../../../components/SEO', () => ({
+  default: () => null,
+}));
+
+vi.mock('../../../components/VerifyEmailLoginModal', () => ({
+  default: ({
+    email,
+    initialExpiresInSeconds,
+    onContinue,
+    open,
+  }: {
+    email: string;
+    initialExpiresInSeconds: number;
+    onContinue: (state: {
+      codeExpiresInSeconds: number;
+      codeSent: boolean;
+      email: string;
+      verificationContext: 'login';
+    }) => void;
+    open: boolean;
+  }) =>
+    open ? (
+      <div role="dialog">
+        <p>Verifica tu correo</p>
+        <p>Ya hay un código vigente. Revisa tu bandeja de entrada.</p>
+        <button
+          type="button"
+          onClick={() =>
+            onContinue({
+              codeExpiresInSeconds: initialExpiresInSeconds,
+              codeSent: initialExpiresInSeconds > 0,
+              email,
+              verificationContext: 'login',
+            })
+          }
+        >
+          Ingresar código
+        </button>
+      </div>
+    ) : null,
+}));
+
 vi.mock('../../../context/AuthContext', () => ({
 
   useAuth: () => ({
@@ -253,4 +295,3 @@ describe('Login RBAC redirect', () => {
   });
 
 });
-

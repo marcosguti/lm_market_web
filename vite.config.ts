@@ -16,10 +16,51 @@ export default defineConfig(({ mode }) => {
       },
     },
     test: {
-      environment: 'jsdom',
       globals: false,
-      setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/test/**/*.{test,spec}.{ts,tsx}'],
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: 'unit',
+            environment: 'node',
+            include: [
+              'src/api/test/**/*.{test,spec}.{ts,tsx}',
+              'src/utils/test/**/*.{test,spec}.{ts,tsx}',
+              'src/constants/test/**/*.{test,spec}.{ts,tsx}',
+              'src/types/test/**/*.{test,spec}.{ts,tsx}',
+            ],
+            exclude: ['src/api/test/client.test.ts'],
+            testTimeout: 10_000,
+            hookTimeout: 10_000,
+          },
+        },
+        {
+          extends: true,
+          test: {
+            name: 'ui',
+            environment: 'jsdom',
+            setupFiles: ['./src/test/setupAntd.ts', './src/test/setup.ts'],
+            include: [
+              'src/App/test/**/*.{test,spec}.{ts,tsx}',
+              'src/components/**/test/**/*.{test,spec}.{ts,tsx}',
+              'src/pages/**/test/**/*.{test,spec}.{ts,tsx}',
+              'src/hooks/test/**/*.{test,spec}.{ts,tsx}',
+              'src/api/test/client.test.ts',
+            ],
+            testTimeout: 10_000,
+            hookTimeout: 10_000,
+            fileParallelism: false,
+            pool: 'threads',
+            poolOptions: {
+              threads: {
+                maxThreads: 1,
+                minThreads: 1,
+              },
+            },
+            teardownTimeout: 5_000,
+          },
+        },
+      ],
     },
   };
 });
