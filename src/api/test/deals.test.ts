@@ -19,7 +19,7 @@ describe('deals api', () => {
   it('getActiveDeals uses public endpoint', async () => {
     vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
     await getActiveDeals();
-    expect(client.api).toHaveBeenCalledWith('/api/deals');
+    expect(client.api).toHaveBeenCalledWith('/api/deals', { skipAuth: true });
   });
 
   it('createAdminDeal posts multipart body', async () => {

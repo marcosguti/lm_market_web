@@ -37,7 +37,7 @@ vi.mock('../../../context/CartContext', () => ({
 
 vi.mock('../../../api/notifications', () => ({
   getNotifications: vi.fn().mockResolvedValue({ ok: true, data: { data: [] } }),
-  markNotificationRead: vi.fn(),
+  markAllNotificationsRead: vi.fn(),
 }));
 
 vi.mock('../../../realtime/socket', () => ({

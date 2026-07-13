@@ -202,6 +202,7 @@ const ProductsCatalog = ({
   const [error, setError] = useState<string | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+  const [filtersReady, setFiltersReady] = useState(false);
   const { cart: cartItems, clearCart, setStoreId, storeId: cartStoreId } = useCart();
 
   useEffect(() => {
@@ -229,17 +230,34 @@ const ProductsCatalog = ({
   }, [priceRange]);
 
   useEffect(() => {
+    let cancelled = false;
+
     void (async () => {
       const [b, s] = await Promise.all([fetchBrands(), getStores()]);
+      if (cancelled) return;
+
       setBrands(b);
       setStores(s);
-      if (s.length === 0) return;
-      const initial =
-        cartStoreId && s.some((store) => store.id === cartStoreId) ? cartStoreId : s[0].id;
-      setSelectedStoreId(initial);
-      if (initial !== cartStoreId) setStoreId(initial);
+
+      if (s.length > 0) {
+        const persistedStoreId = cartStoreId;
+        const initial =
+          persistedStoreId && s.some((store) => store.id === persistedStoreId)
+            ? persistedStoreId
+            : s[0].id;
+        setSelectedStoreId(initial);
+        if (initial !== persistedStoreId) setStoreId(initial);
+      }
+
+      setFiltersReady(true);
     })();
-  }, [cartStoreId, setStoreId]);
+
+    return () => {
+      cancelled = true;
+    };
+    // Read cartStoreId once on mount; omit from deps to avoid re-fetch when store syncs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only filter bootstrap
+  }, [setStoreId]);
 
   useEffect(() => {
     if (externalDepartments) return;
@@ -307,10 +325,10 @@ const ProductsCatalog = ({
   ]);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      void load();
-    });
-  }, [load]);
+    if (!filtersReady) return;
+    if (stores.length > 0 && !selectedStoreId) return;
+    void load();
+  }, [load, filtersReady, stores.length, selectedStoreId]);
 
   const handleSelectBrand = (id: string | null) => {
     setSelectedBrandId(id);

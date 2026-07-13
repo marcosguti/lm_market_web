@@ -16,10 +16,10 @@ import {
   Popover,
   Skeleton,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { getNotifications, markNotificationRead } from '../../api/notifications';
+import { getNotifications, markAllNotificationsRead } from '../../api/notifications';
 import { formatBs } from '../../constants/pricing';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -27,7 +27,7 @@ import { connectSocket } from '../../realtime/socket';
 import { theme } from '../../theme';
 import type { EmailVerificationLocationState } from '../../types/emailVerification';
 import { getMaxOrderQuantity } from '../../utils/cartStock';
-import { formatNotificationBody } from '../../utils/notification';
+import { formatNotificationBody, formatNotificationTitle } from '../../utils/notification';
 import VerifyEmailLoginModal from '../VerifyEmailLoginModal';
 
 const HEADER_BTN_CLASS =
@@ -72,6 +72,32 @@ const Header = () => {
   const [form] = Form.useForm<{ email: string; password: string }>();
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const notificationsFetchedForUserId = useRef<string | null>(null);
+  const notificationsOpenRef = useRef(false);
+
+  useEffect(() => {
+    notificationsOpenRef.current = notificationsOpen;
+  }, [notificationsOpen]);
+
+  const handleNotificationsOpenChange = (open: boolean) => {
+    setNotificationsOpen(open);
+    if (!open) {
+      return;
+    }
+
+    setNotifications((prev) => {
+      const hasUnread = prev.some((notification) => !notification.readAt);
+      if (!hasUnread) {
+        return prev;
+      }
+
+      void markAllNotificationsRead();
+      const readAt = new Date().toISOString();
+      return prev.map((notification) =>
+        notification.readAt ? notification : { ...notification, readAt }
+      );
+    });
+  };
 
   const handleOpenLogin = () => {
     setLoginModalOpen(true);
@@ -121,15 +147,19 @@ const Header = () => {
 
   useEffect(() => {
     if (!user) {
+      notificationsFetchedForUserId.current = null;
       queueMicrotask(() => setNotifications([]));
       return;
     }
 
     let cancelled = false;
     const token = localStorage.getItem('lm_market_token');
+    const userId = user.id;
 
     const run = async () => {
-      const response = await getNotifications(1, 20);
+      if (notificationsFetchedForUserId.current === userId) return;
+      notificationsFetchedForUserId.current = userId;
+      const response = await getNotifications({ inbox: true, recentRead: 5 });
       if (!cancelled && response.ok && response.data?.data) {
         setNotifications(
           response.data.data.map((item) => ({
@@ -177,11 +207,14 @@ const Header = () => {
         orderId: payload.orderId ?? null,
         payload: notificationPayload,
         persisted: false,
-        readAt: null,
+        readAt: notificationsOpenRef.current ? now : null,
         title: payload.title ?? 'Notificación',
         type: payload.type ?? 'ORDER_STATUS_CHANGED',
       };
       setNotifications((prev) => [next, ...prev].slice(0, 30));
+      if (notificationsOpenRef.current) {
+        void markAllNotificationsRead();
+      }
 
       const status = payload.status;
       const shouldDesktop =
@@ -202,7 +235,7 @@ const Header = () => {
       cancelled = true;
       socket.off('notification:new', onNotification);
     };
-  }, [user]);
+  }, [user?.id]);
 
   const userMenuItems: MenuProps['items'] = [
     {
@@ -360,7 +393,7 @@ const Header = () => {
               <Popover
                 trigger="click"
                 open={notificationsOpen}
-                onOpenChange={setNotificationsOpen}
+                onOpenChange={handleNotificationsOpenChange}
                 content={
                   <div className="max-h-[70vh] w-[320px] max-w-[80vw] overflow-y-auto">
                     {notifications.length === 0 ? (
@@ -372,26 +405,12 @@ const Header = () => {
                         renderItem={(item) => (
                           <List.Item
                             className="cursor-pointer"
-                            onClick={() => {
-                              if (!item.readAt) {
-                                setNotifications((prev) =>
-                                  prev.map((notification) =>
-                                    notification.id === item.id
-                                      ? { ...notification, readAt: new Date().toISOString() }
-                                      : notification
-                                  )
-                                );
-                                if (item.persisted) {
-                                  void markNotificationRead(item.id);
-                                }
-                              }
-                              setNotificationsOpen(false);
-                            }}
+                            onClick={() => setNotificationsOpen(false)}
                           >
                             <List.Item.Meta
                               title={
                                 <span className="text-sm font-semibold">
-                                  {item.title}
+                                  {formatNotificationTitle(item.title, item.orderId)}
                                   {!item.readAt ? (
                                     <span className="ml-2 inline-block h-2 w-2 rounded-full bg-primary" />
                                   ) : null}

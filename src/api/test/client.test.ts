@@ -8,11 +8,12 @@ const localStorageMock = vi.hoisted(() => ({
 
 vi.stubGlobal('localStorage', localStorageMock);
 
-import { api, forceLogout, tryRefreshToken } from '../client';
+import { api, forceLogout, resetInflightGetsForTests, tryRefreshToken } from '../client';
 
 describe('api client auth interceptor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetInflightGetsForTests();
     localStorageMock.getItem.mockReset();
     localStorageMock.setItem.mockReset();
     localStorageMock.removeItem.mockReset();
@@ -62,5 +63,24 @@ describe('api client auth interceptor', () => {
   it('tryRefreshToken returns false without refresh token', async () => {
     localStorageMock.getItem.mockReturnValue(null);
     await expect(tryRefreshToken()).resolves.toBe(false);
+  });
+
+  it('dedupes concurrent GET requests', async () => {
+    let resolveFetch!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockReturnValue(pending);
+
+    const first = api<{ data: unknown[] }>('/api/brands', { skipAuth: true });
+    const second = api<{ data: unknown[] }>('/api/brands', { skipAuth: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    resolveFetch!(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    const [r1, r2] = await Promise.all([first, second]);
+    expect(r1.ok).toBe(true);
+    expect(r2.ok).toBe(true);
   });
 });

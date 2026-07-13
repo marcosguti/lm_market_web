@@ -134,6 +134,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [orderId, setOrderId] = useState<null | string>(null);
   const [storeId, setStoreIdState] = useState<string>(() => loadStoreId());
   const syncingFromServerRef = useRef(false);
+  const userCartDirtyRef = useRef(false);
   const syncInFlightRef = useRef<null | Promise<FlushCartSyncResult>>(null);
   const cartRef = useRef(cart);
   const orderIdRef = useRef(orderId);
@@ -232,8 +233,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
 
       setOrderId(result.data.order.id);
-      const next = mapOrderLinesToCart(result.data.order.products);
-      if (JSON.stringify(next) !== JSON.stringify(cartRef.current)) {
+      const nextLines = serializeCartLines(mapOrderLinesToCart(result.data.order.products));
+      const currentLines = serializeCartLines(cartRef.current);
+      if (nextLines !== currentLines) {
         replaceFromOrderLines(result.data.order.products);
       }
 
@@ -308,8 +310,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!orderId) return;
     if (!storeId) return;
     if (syncingFromServerRef.current) return;
+    if (!userCartDirtyRef.current) return;
 
-    void executeSyncCycle(true);
+    void executeSyncCycle(true).then((result) => {
+      if (result.ok) {
+        userCartDirtyRef.current = false;
+      }
+    });
   }, [cart, executeSyncCycle, orderId, storeId, user?.type]);
 
   const cartSubtotal = useMemo(
@@ -330,9 +337,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return prev;
       }
 
-      const productKey = product.code ?? product.id;
+      const productKey = product.code?.trim() || product.id.trim();
+      const normalizedProduct: CartProduct = {
+        ...product,
+        code: product.code?.trim() || productKey,
+        id: productKey,
+      };
       const existing = prev.find((i) => i.productId === productKey);
-      const mergedProduct: CartProduct = existing ? { ...existing.product, ...product } : product;
+      const mergedProduct: CartProduct = existing
+        ? { ...existing.product, ...normalizedProduct, id: productKey }
+        : normalizedProduct;
 
       const cap = getMaxOrderQuantity(mergedProduct);
       if (existing) {
@@ -340,6 +354,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const added = nextQty - existing.quantity;
         result = { added, requested };
         if (added === 0) return prev;
+        userCartDirtyRef.current = true;
         return prev.map((i) =>
           i.productId === productKey ? { ...i, product: mergedProduct, quantity: nextQty } : i
         );
@@ -348,6 +363,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const firstQty = Math.min(requested, cap);
       result = { added: firstQty, requested };
       if (firstQty <= 0) return prev;
+      userCartDirtyRef.current = true;
       return [
         ...prev,
         {
@@ -362,7 +378,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeFromCart = useCallback((productId: string) => {
-    setCart((prev) => prev.filter((i) => i.productId !== productId));
+    setCart((prev) => {
+      if (!prev.some((i) => i.productId === productId)) return prev;
+      userCartDirtyRef.current = true;
+      return prev.filter((i) => i.productId !== productId);
+    });
   }, []);
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {
@@ -372,23 +392,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const next = Math.trunc(quantity);
       if (next <= 0) {
+        userCartDirtyRef.current = true;
         return prev.filter((i) => i.productId !== productId);
       }
 
       const capped = clampQuantity(item.product, next);
       if (capped <= 0) {
+        userCartDirtyRef.current = true;
         return prev.filter((i) => i.productId !== productId);
       }
 
+      if (capped === item.quantity) return prev;
+      userCartDirtyRef.current = true;
       return prev.map((i) => (i.productId === productId ? { ...i, quantity: capped } : i));
     });
   }, []);
 
   const clearCart = useCallback((options?: { afterCheckout?: boolean }) => {
+    setCart((prev) => {
+      if (prev.length === 0) return prev;
+      userCartDirtyRef.current = true;
+      return [];
+    });
     if (options?.afterCheckout) {
       setOrderId(null);
     }
-    setCart([]);
   }, []);
 
   const value = useMemo<CartContextValue>(

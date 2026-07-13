@@ -10,4 +10,9 @@ describe('normalizeVoucherText', () => {
   it('returns empty string for blank input', () => {
     expect(normalizeVoucherText('   \n  ')).toBe('');
   });
+
+  it('collapses multiple spaces within a line to a single space', () => {
+    expect(normalizeVoucherText('<UT>          DUPLICADO</UT>')).toBe('<UT> DUPLICADO</UT>');
+    expect(normalizeVoucherText('MONTO BS.  :5.172,00')).toBe('MONTO BS. :5.172,00');
+  });
 });

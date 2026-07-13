@@ -1,4 +1,12 @@
 import { formatOrderStatusChangeMessage, formatOrderStatusLabel } from './orderStatus';
+import { formatShortOrderId } from './orderId';
+
+export function formatNotificationTitle(title: string, orderId: null | string): string {
+  if (!orderId) {
+    return title;
+  }
+  return `${formatShortOrderId(orderId)} · ${title}`;
+}
 
 export function formatNotificationBody(
   body: string,

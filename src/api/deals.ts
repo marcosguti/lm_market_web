@@ -73,5 +73,5 @@ export async function deleteAdminDeal(id: string) {
 }
 
 export async function getActiveDeals(): Promise<ApiResult<{ data: string[] }>> {
-  return api<{ data: string[] }>('/api/deals');
+  return api<{ data: string[] }>('/api/deals', { skipAuth: true });
 }

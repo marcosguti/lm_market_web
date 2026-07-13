@@ -75,12 +75,31 @@ export async function getOrderHistory(page: number = 1, pageSize: number = 20) {
   });
 }
 
-export async function getKitchenOrders(page: number = 1, pageSize: number = 20) {
+export interface KitchenOrdersFilters {
+  createdFrom?: string;
+  createdTo?: string;
+  id?: string;
+  status?: OrderStatus | 'all';
+  storeId?: string;
+}
+
+export async function getKitchenOrders(
+  page: number = 1,
+  pageSize: number = 20,
+  filters: KitchenOrdersFilters = {},
+) {
+  const params: Record<string, string> = {
+    page: String(page),
+    pageSize: String(pageSize),
+  };
+  if (filters.id) params.id = filters.id;
+  if (filters.storeId && filters.storeId !== 'all') params.storeId = filters.storeId;
+  if (filters.status && filters.status !== 'all') params.status = filters.status;
+  if (filters.createdFrom) params.createdFrom = filters.createdFrom;
+  if (filters.createdTo) params.createdTo = filters.createdTo;
+
   return api<PaginatedOrders>('/api/admin/orders/kitchen', {
-    params: {
-      page: String(page),
-      pageSize: String(pageSize),
-    },
+    params,
   });
 }
 

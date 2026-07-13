@@ -11,6 +11,10 @@ vi.mock('../../../api/orders', () => ({
   verifyPayment: vi.fn(),
 }));
 
+vi.mock('../../../api/stores', () => ({
+  getStores: vi.fn().mockResolvedValue([{ id: 'store-1', name: 'Sede Centro', externalBranchCode: '001' }]),
+}));
+
 vi.mock('../../../realtime/socket', () => ({
   connectSocket: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })),
   disconnectSocket: vi.fn(),
@@ -20,6 +24,10 @@ vi.mock('../../../realtime/socket', () => ({
 import AdminOrdersPage from '../index';
 
 describe('AdminOrders page smoke', () => {
+  beforeEach(() => {
+    localStorage.setItem('lm_market_token', 'test-token');
+  });
+
   it('renders kitchen orders title', async () => {
     render(
       <MemoryRouter>
@@ -28,6 +36,24 @@ describe('AdminOrders page smoke', () => {
     );
     await waitFor(() => {
       expect(screen.getByText('Órdenes de compra')).toBeInTheDocument();
+    });
+  });
+
+  it('renders filter controls', async () => {
+    render(
+      <MemoryRouter>
+        <AdminOrdersPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-order-id')).toHaveTextContent('Order ID');
+      expect(screen.getByTestId('filter-store')).toHaveTextContent('Sede');
+      expect(screen.getByTestId('filter-status')).toHaveTextContent('Estado');
+      expect(screen.getByTestId('filter-period')).toHaveTextContent('Período');
+      expect(screen.getByPlaceholderText('Buscar por ID')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Buscar' })).toBeInTheDocument();
+      expect(screen.getAllByRole('combobox').length).toBeGreaterThanOrEqual(3);
     });
   });
 });

@@ -51,6 +51,28 @@ describe('orders api', () => {
     });
   });
 
+  it('getKitchenOrders passes optional filters', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
+    await getKitchenOrders(2, 50, {
+      createdFrom: '2026-07-01',
+      createdTo: '2026-07-13',
+      id: 'abc-123',
+      status: 'preparing',
+      storeId: 'store-1',
+    });
+    expect(client.api).toHaveBeenCalledWith('/api/admin/orders/kitchen', {
+      params: {
+        createdFrom: '2026-07-01',
+        createdTo: '2026-07-13',
+        id: 'abc-123',
+        page: '2',
+        pageSize: '50',
+        status: 'preparing',
+        storeId: 'store-1',
+      },
+    });
+  });
+
   it('getDeliveryAvailable calls delivery available endpoint', async () => {
     vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
     await getDeliveryAvailable(1, 50);

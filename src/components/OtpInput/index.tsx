@@ -39,7 +39,10 @@ export const OtpInput = ({
   onChange,
   styles,
   ...props
-}: OtpInputProps) => (
+}: OtpInputProps) => {
+  const userStyles = styles && typeof styles !== 'function' ? styles : undefined;
+
+  return (
   <Input.OTP
     classNames={{
       input: 'lm-otp-cell',
@@ -51,12 +54,13 @@ export const OtpInput = ({
     length={length}
     rootClassName="lm-otp"
     styles={{
-      input: { ...otpCellStyle, ...styles?.input },
-      root: { ...otpRootStyle, ...styles?.root },
-      separator: styles?.separator,
+      input: { ...otpCellStyle, ...userStyles?.input },
+      root: { ...otpRootStyle, ...userStyles?.root },
+      separator: userStyles?.separator,
     }}
     type="text"
     onChange={(value) => onChange?.(digitsOnly(value))}
     {...props}
   />
-);
+  );
+};

@@ -8,6 +8,7 @@ import { getOrderHistory } from '../../api/orders';
 import { OrderProductsModal } from '../../components/OrderProductsModal';
 import { connectSocket } from '../../realtime/socket';
 import { ORDER_STATUS_LABELS } from '../../utils/orderStatus';
+import { formatShortOrderId } from '../../utils/orderId';
 
 const { Title } = Typography;
 
@@ -107,7 +108,12 @@ const MyOrdersPage = () => {
         rowKey="id"
         dataSource={data}
         columns={[
-          { title: 'Orden', dataIndex: 'id', key: 'id' },
+          {
+            title: 'Orden',
+            dataIndex: 'id',
+            key: 'id',
+            render: (id: string) => formatShortOrderId(id),
+          },
           {
             title: 'Estado',
             dataIndex: 'status',

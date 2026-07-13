@@ -1,8 +1,9 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthProvider, useAuth } from '../AuthContext';
+import { AuthProvider, resetAuthBootstrapForTests, useAuth } from '../AuthContext';
 
 vi.mock('../../realtime/socket', () => ({
   disconnectSocket: vi.fn(),
@@ -34,10 +35,57 @@ describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    resetAuthBootstrapForTests();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('bootstrap calls /me only once under StrictMode', async () => {
+    localStorage.setItem('lm_market_token', 'access');
+
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/api/auth/me')) {
+        return Promise.resolve({
+          json: async () => ({
+            user: {
+              id: 'u1',
+              email: 'a@test.com',
+              firstName: 'Ana',
+              lastName: 'Test',
+              numberId: '1',
+              type: 'client',
+            },
+          }),
+          ok: true,
+          status: 200,
+        });
+      }
+      return Promise.resolve({
+        json: async () => ({}),
+        ok: true,
+        status: 200,
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user')).toHaveTextContent('a@test.com');
+    });
+
+    const meCalls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes('/api/auth/me'),
+    );
+    expect(meCalls).toHaveLength(1);
   });
 
   it('login stores token and user on success', async () => {
@@ -45,7 +93,7 @@ describe('AuthContext', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         json: async () => ({
-          token: 'access',
+          accessToken: 'access',
           refreshToken: 'refresh',
           user: {
             id: 'u1',

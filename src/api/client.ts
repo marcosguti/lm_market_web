@@ -168,21 +168,20 @@ async function doFetch<T>(href: string, init: RequestInit): Promise<ApiResult<T>
   }
 }
 
-export async function api<T>(path: string, options: ApiOptions = {}): Promise<ApiResult<T>> {
-  const { params, skipAuth, skipContentType, _isRetry, ...init } = options;
-  const href = buildHref(path, params);
-  const method = (init.method ?? 'GET').toUpperCase();
-  const headers = new Headers(init.headers);
-  applyJsonContentType(headers, method, init.body, skipContentType);
-  if (!skipAuth) {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-  }
+/** In-flight dedup for concurrent idempotent reads (e.g. StrictMode double-mount). */
+const inflightGets = new Map<string, Promise<ApiResult<unknown>>>();
 
+async function executeApiRequest<T>(
+  path: string,
+  href: string,
+  method: string,
+  init: RequestInit,
+  headers: Headers,
+  options: ApiOptions,
+): Promise<ApiResult<T>> {
+  const { skipAuth, _isRetry } = options;
   const result = await doFetch<T>(href, { ...init, headers });
 
-  // 401 interceptor: skip auth endpoints (login/register/refresh/logout) and
-  // avoid infinite retry loops.
   const isAuthEndpoint = path.includes('/auth/');
   if (
     !result.ok &&
@@ -193,12 +192,47 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<Ap
   ) {
     const refreshed = await tryRefreshToken();
     if (refreshed) {
-      // Re-issue the request with the new access token.
       return api<T>(path, { ...options, _isRetry: true });
     }
-    // Refresh failed: clear session and let the AuthContext redirect to login.
     forceLogout();
   }
 
   return result;
+}
+
+export async function api<T>(path: string, options: ApiOptions = {}): Promise<ApiResult<T>> {
+  const { params, skipAuth, skipContentType, ...init } = options;
+  const href = buildHref(path, params);
+  const method = (init.method ?? 'GET').toUpperCase();
+  const headers = new Headers(init.headers);
+  applyJsonContentType(headers, method, init.body, skipContentType);
+  if (!skipAuth) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const isDedupable =
+    (method === 'GET' || method === 'HEAD') && init.body == null && !options._isRetry;
+  if (!isDedupable) {
+    return executeApiRequest<T>(path, href, method, init, headers, options);
+  }
+
+  const dedupKey = `${method}:${href}:${skipAuth ? 'public' : 'auth'}`;
+  const existing = inflightGets.get(dedupKey);
+  if (existing) {
+    return existing as Promise<ApiResult<T>>;
+  }
+
+  const promise = executeApiRequest<T>(path, href, method, init, headers, options);
+  inflightGets.set(dedupKey, promise as Promise<ApiResult<unknown>>);
+  try {
+    return await promise;
+  } finally {
+    inflightGets.delete(dedupKey);
+  }
+}
+
+/** @internal Test-only reset for GET dedup map. */
+export function resetInflightGetsForTests(): void {
+  inflightGets.clear();
 }

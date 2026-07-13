@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Image,
+  Input,
   message,
   Modal,
   Select,
@@ -12,16 +13,33 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { OrderEntity, OrderStatus } from '../../types/order';
 
 import { getKitchenOrders, patchAdminOrderStatus, verifyPayment } from '../../api/orders';
+import { getStores, type Store } from '../../api/stores';
 import { OrderProductsModal } from '../../components/OrderProductsModal';
 import { connectSocket, disconnectSocket, getSocket } from '../../realtime/socket';
-import { canCancelOrder } from '../../utils/orderStatus';
+import {
+  ORDER_PERIOD_OPTIONS,
+  type OrderPeriodFilter,
+  resolveOrderPeriodDates,
+} from '../../utils/orderPeriodFilter';
+import { canCancelOrder, ORDER_STATUS_LABELS } from '../../utils/orderStatus';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+const ALL_FILTER = 'all';
+
+function FilterField({ children, label, testId }: { children: ReactNode; label: string; testId: string }) {
+  return (
+    <div className="flex flex-col gap-1" data-testid={testId}>
+      <Text className="text-sm text-gray-500">{label}</Text>
+      {children}
+    </div>
+  );
+}
 
 function formatOrderDate(dateStr: string | null | undefined) {
   if (!dateStr) return '—';
@@ -61,6 +79,12 @@ const AdminOrdersPage = () => {
   const [data, setData] = useState<OrderEntity[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [orderIdInput, setOrderIdInput] = useState('');
+  const [orderIdFilter, setOrderIdFilter] = useState('');
+  const [storeFilter, setStoreFilter] = useState(ALL_FILTER);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | typeof ALL_FILTER>(ALL_FILTER);
+  const [periodFilter, setPeriodFilter] = useState<OrderPeriodFilter>('all');
   const [paymentModal, setPaymentModal] = useState<{
     open: boolean;
     order: OrderEntity | null;
@@ -72,9 +96,34 @@ const AdminOrdersPage = () => {
   const [verifying, setVerifying] = useState(false);
   const token = localStorage.getItem('lm_market_token');
 
-  const reload = async () => {
+  const statusOptions = useMemo(
+    () => [
+      { label: 'Todos', value: ALL_FILTER },
+      ...(Object.entries(ORDER_STATUS_LABELS) as [OrderStatus, string][]).map(([value, label]) => ({
+        label,
+        value,
+      })),
+    ],
+    [],
+  );
+
+  const storeOptions = useMemo(
+    () => [
+      { label: 'Todos', value: ALL_FILTER },
+      ...stores.map((store) => ({ label: store.name, value: store.id })),
+    ],
+    [stores],
+  );
+
+  const reload = useCallback(async () => {
     setLoading(true);
-    const result = await getKitchenOrders(1, 100);
+    const periodDates = resolveOrderPeriodDates(periodFilter);
+    const result = await getKitchenOrders(1, 100, {
+      ...periodDates,
+      id: orderIdFilter || undefined,
+      status: statusFilter,
+      storeId: storeFilter,
+    });
     setLoading(false);
     if (!result.ok || !result.data?.data) {
       setError((result.data as { error?: string })?.error ?? 'No se pudo cargar la cola de cocina');
@@ -82,13 +131,20 @@ const AdminOrdersPage = () => {
     }
     setData(result.data.data);
     setError('');
-  };
+  }, [orderIdFilter, periodFilter, statusFilter, storeFilter]);
+
+  useEffect(() => {
+    void (async () => {
+      const loadedStores = await getStores();
+      setStores(loadedStores);
+    })();
+  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
       void reload();
     });
-  }, []);
+  }, [reload]);
 
   useEffect(() => {
     if (!token) return;
@@ -106,7 +162,7 @@ const AdminOrdersPage = () => {
       socket.off('order:cancelled', onCancelled);
       if (getSocket()) disconnectSocket();
     };
-  }, [token]);
+  }, [reload, token]);
 
   const getStatusOptions = (order: OrderEntity): { label: string; value: OrderStatus }[] => {
     if (order.status === 'paymentConfirmed') {
@@ -178,6 +234,51 @@ const AdminOrdersPage = () => {
         <Title level={2} className="!mb-0">
           Órdenes de compra
         </Title>
+        <Space wrap align="end">
+          <FilterField label="Order ID" testId="filter-order-id">
+            <Input.Search
+              allowClear
+              enterButton="Buscar"
+              placeholder="Buscar por ID"
+              style={{ width: 260 }}
+              value={orderIdInput}
+              onChange={(event) => setOrderIdInput(event.target.value)}
+              onSearch={(value) => {
+                setOrderIdFilter(value.trim());
+              }}
+            />
+          </FilterField>
+          <FilterField label="Sede" testId="filter-store">
+            <Select
+              options={storeOptions}
+              style={{ width: 180 }}
+              value={storeFilter}
+              onChange={(value) => {
+                setStoreFilter(value);
+              }}
+            />
+          </FilterField>
+          <FilterField label="Estado" testId="filter-status">
+            <Select
+              options={statusOptions}
+              style={{ width: 200 }}
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+              }}
+            />
+          </FilterField>
+          <FilterField label="Período" testId="filter-period">
+            <Select
+              options={ORDER_PERIOD_OPTIONS}
+              style={{ width: 200 }}
+              value={periodFilter}
+              onChange={(value) => {
+                setPeriodFilter(value);
+              }}
+            />
+          </FilterField>
+        </Space>
         {error ? <Alert type="error" showIcon message={error} /> : null}
         <Table
           loading={loading}

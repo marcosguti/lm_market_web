@@ -10,9 +10,17 @@ describe('notifications api', () => {
 
   it('getNotifications passes pagination', async () => {
     vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
-    await getNotifications(2, 10);
+    await getNotifications({ page: 2, pageSize: 10 });
     expect(client.api).toHaveBeenCalledWith('/api/notifications', {
       params: { page: '2', pageSize: '10' },
+    });
+  });
+
+  it('getNotifications passes inbox params', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
+    await getNotifications({ inbox: true, recentRead: 5 });
+    expect(client.api).toHaveBeenCalledWith('/api/notifications', {
+      params: { inbox: 'true', recentRead: '5' },
     });
   });
 

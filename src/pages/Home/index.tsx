@@ -103,7 +103,12 @@ const Home = () => {
     <>
       <AnimatePresence>
         {showDeals && activeDeals.length > 0 && (
-          <DealBannerModal onClose={handleCloseDeals} onEmpty={() => setShowDeals(false)} />
+          <DealBannerModal
+            images={activeDeals}
+            loading={dealsLoading}
+            onClose={handleCloseDeals}
+            onEmpty={() => setShowDeals(false)}
+          />
         )}
       </AnimatePresence>
       <SEO
@@ -139,7 +144,6 @@ const Home = () => {
 
       <div id="products-catalog" className="relative z-10 -mt-[400px] sm:-mt-[450px] lg:-mt-[500px] pb-[24px] sm:pb-[32px]">
         <ProductsCatalog
-          key={selectedDepartmentId ?? 'all'}
           externalDepartments={departments}
           initialDepartmentId={selectedDepartmentId}
         />

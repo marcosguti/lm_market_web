@@ -130,6 +130,55 @@ function clearAuthStorage(): void {
   localStorage.removeItem(USER_KEY);
 }
 
+type AuthBootstrapResult = {
+  isLoading: false;
+  token: string | null;
+  user: User | null;
+};
+
+/** Shared across StrictMode remounts so /me runs once per page load. */
+let authInitPromise: Promise<AuthBootstrapResult> | null = null;
+
+async function bootstrapAuth(): Promise<AuthBootstrapResult> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (refreshToken) {
+    await tryRefreshToken();
+  }
+  const newAccessToken = localStorage.getItem(TOKEN_KEY);
+  if (!newAccessToken) {
+    return { isLoading: false, token: null, user: null };
+  }
+  const { data, status } = await getRequest<{ user: User }>('/api/auth/me');
+  if (status === 401) {
+    clearAuthStorage();
+    return { isLoading: false, token: null, user: null };
+  }
+  if (status === 200 && data?.user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return { isLoading: false, token: newAccessToken, user: data.user };
+  }
+  const userStr = localStorage.getItem(USER_KEY);
+  try {
+    const user = userStr ? (JSON.parse(userStr) as User) : null;
+    return { isLoading: false, token: newAccessToken, user: user ?? null };
+  } catch {
+    clearAuthStorage();
+    return { isLoading: false, token: null, user: null };
+  }
+}
+
+function getAuthBootstrap(): Promise<AuthBootstrapResult> {
+  if (!authInitPromise) {
+    authInitPromise = bootstrapAuth();
+  }
+  return authInitPromise;
+}
+
+/** @internal Test-only reset for auth bootstrap singleton. */
+export function resetAuthBootstrapForTests(): void {
+  authInitPromise = null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     isLoading: true,
@@ -150,44 +199,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // On mount: if a refresh token is present, try to refresh first so the
   // user has a fresh access token before we validate against /me.
   useEffect(() => {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-    const accessToken = localStorage.getItem(TOKEN_KEY);
-
-    const init = async () => {
-      if (refreshToken) {
-        // Proactive refresh on mount: extends the session before any request.
-        await tryRefreshToken();
-      }
-      const newAccessToken = localStorage.getItem(TOKEN_KEY);
-      if (!newAccessToken) {
-        setState((s) => ({ ...s, isLoading: false }));
-        return;
-      }
-      const { data, status } = await getRequest<{ user: User }>('/api/auth/me');
-      if (status === 401) {
-        clearAuthStorage();
-        setState({ isLoading: false, token: null, user: null });
-        return;
-      }
-      if (status === 200 && data?.user) {
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-        setState({ isLoading: false, token: newAccessToken, user: data.user });
-        return;
-      }
-      // Network/server error fallback: trust the cached user until we recover.
-      const userStr = localStorage.getItem(USER_KEY);
-      try {
-        const user = userStr ? (JSON.parse(userStr) as User) : null;
-        setState({ isLoading: false, token: newAccessToken, user: user ?? null });
-      } catch {
-        clearAuthStorage();
-        setState({ isLoading: false, token: null, user: null });
-      }
+    let cancelled = false;
+    void getAuthBootstrap().then((result) => {
+      if (!cancelled) setState(result);
+    });
+    return () => {
+      cancelled = true;
     };
-    void init();
-
-    // Silence unused var warning when accessToken is not used directly.
-    void accessToken;
   }, []);
 
   // Proactive refresh: every 50 minutes, if the user is logged in and the

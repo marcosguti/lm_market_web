@@ -104,6 +104,10 @@ export function mockDatePicker(props: Record<string, unknown>) {
   return <input type="text" data-testid="antd-datepicker" {...props} />;
 }
 
+mockDatePicker.RangePicker = function RangePicker(props: Record<string, unknown>) {
+  return <input type="text" data-testid="antd-rangepicker" {...props} />;
+};
+
 export function mockImage({ src, alt }: { alt?: string; src?: string }) {
   return <img src={src} alt={alt} />;
 }

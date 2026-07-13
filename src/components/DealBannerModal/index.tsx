@@ -3,28 +3,15 @@ import { Button } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';
 
-import { getActiveDeals } from '../../api/deals';
-
 interface DealBannerModalProps {
+  images: string[];
+  loading?: boolean;
   onClose: () => void;
   onEmpty?: () => void;
 }
 
-const DealBannerModal = ({ onClose, onEmpty }: DealBannerModalProps) => {
-  const [images, setImages] = useState<string[]>([]);
+const DealBannerModal = ({ images, loading = false, onClose, onEmpty }: DealBannerModalProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadDeals = async () => {
-      const res = await getActiveDeals();
-      setLoading(false);
-      if (res.ok && Array.isArray(res.data?.data)) {
-        setImages(res.data.data);
-      }
-    };
-    void loadDeals();
-  }, []);
 
   useEffect(() => {
     if (!loading && images.length === 0) {
