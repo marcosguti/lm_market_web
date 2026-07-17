@@ -6,12 +6,15 @@ import type { OrderEntity } from '../../../types/order';
 import { OrderProductsModal } from '../index';
 
 const baseOrder: OrderEntity = {
+  cancellationReason: null,
   confirmationCode: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   customerNotes: null,
   deliveryAddress: null,
   deliveryPhone: null,
+  deliveryProofUrl: null,
   deliveryUserId: null,
+  exchangeRate: 600,
   id: 'order-1',
   idempotencyKey: null,
   paidAt: null,
@@ -43,6 +46,7 @@ const baseOrder: OrderEntity = {
   storeId: 'store-1',
   storeName: 'Sede Centro',
   totalAmount: 15,
+  totalAmountBs: 9000,
   updatedAt: '2026-01-01T00:00:00.000Z',
   userId: 'user-1',
   userNumberId: '123',

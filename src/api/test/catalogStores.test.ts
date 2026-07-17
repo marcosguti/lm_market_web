@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as client from '../client';
 import { fetchBrands, fetchDepartments } from '../catalog';
+import * as client from '../client';
 import { getStores } from '../stores';
 
 vi.mock('../client', () => ({ api: vi.fn() }));

@@ -1,16 +1,36 @@
 import type { OrderStatus } from '../types/order';
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  assignedToDeliveryDriver: 'Asignada a repartidor',
   cancelled: 'Cancelada',
   delivered: 'Entregada',
-  outForDelivery: 'En Reparto',
+  delivering: 'En Reparto',
   paymentConfirmed: 'Pago Confirmado',
+  paymentPendingConfirmation: 'Pago por confirmar',
   pending: 'Pendiente',
   preparing: 'Preparando',
   readyForDelivery: 'Lista para Reparto',
 };
 
-const CANCELLABLE_STATUSES: OrderStatus[] = ['pending', 'paymentConfirmed', 'preparing'];
+/** All order statuses in workflow order (for filters). */
+export const ORDER_STATUS_FLOW: OrderStatus[] = [
+  'pending',
+  'paymentPendingConfirmation',
+  'paymentConfirmed',
+  'preparing',
+  'readyForDelivery',
+  'assignedToDeliveryDriver',
+  'delivering',
+  'delivered',
+  'cancelled',
+];
+
+const CANCELLABLE_STATUSES: OrderStatus[] = [
+  'pending',
+  'paymentPendingConfirmation',
+  'paymentConfirmed',
+  'preparing',
+];
 
 export function canCancelOrder(status: OrderStatus): boolean {
   return CANCELLABLE_STATUSES.includes(status);

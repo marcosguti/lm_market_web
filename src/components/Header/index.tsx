@@ -14,19 +14,24 @@ import {
   message,
   Modal,
   Popover,
+  Select,
   Skeleton,
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+
+import type { EmailVerificationLocationState } from '../../types/emailVerification';
 
 import { getNotifications, markAllNotificationsRead } from '../../api/notifications';
 import { formatBs } from '../../constants/pricing';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useUsdRate } from '../../context/ExchangeRateContext';
+import { useHomeCatalog } from '../../context/HomeCatalogContext';
 import { connectSocket } from '../../realtime/socket';
 import { theme } from '../../theme';
-import type { EmailVerificationLocationState } from '../../types/emailVerification';
 import { getMaxOrderQuantity } from '../../utils/cartStock';
+import { formatDateTime } from '../../utils/formatDate';
 import { formatNotificationBody, formatNotificationTitle } from '../../utils/notification';
 import VerifyEmailLoginModal from '../VerifyEmailLoginModal';
 
@@ -37,7 +42,11 @@ const HEADER_ICON_BTN_CLASS =
 
 const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+  const homeCatalog = useHomeCatalog();
   const { user, isLoading, login, logout } = useAuth();
+  const canShop = !user || user.type === 'client';
   const {
     cart,
     cartSubtotal,
@@ -47,6 +56,7 @@ const Header = () => {
     totalItemCount,
     updateQuantity,
   } = useCart();
+  const usdRate = useUsdRate();
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [checkoutSyncing, setCheckoutSyncing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -139,7 +149,11 @@ const Header = () => {
     setMobileMenuOpen(false);
   };
 
-  const formattedTotalBs = useMemo(() => formatBs(cartSubtotal), [cartSubtotal]);
+  const formattedTotalBs = useMemo(() => formatBs(cartSubtotal, usdRate), [cartSubtotal, usdRate]);
+  const selectedStoreName = useMemo(() => {
+    if (!homeCatalog?.selectedStoreId) return '';
+    return homeCatalog.stores.find((s) => s.id === homeCatalog.selectedStoreId)?.name ?? '';
+  }, [homeCatalog?.selectedStoreId, homeCatalog?.stores]);
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.readAt).length,
     [notifications]
@@ -218,7 +232,10 @@ const Header = () => {
 
       const status = payload.status;
       const shouldDesktop =
-        status === 'preparing' || status === 'readyForDelivery' || status === 'outForDelivery';
+        status === 'preparing' ||
+        status === 'readyForDelivery' ||
+        status === 'assignedToDeliveryDriver' ||
+        status === 'delivering';
       if (
         shouldDesktop &&
         typeof Notification !== 'undefined' &&
@@ -305,6 +322,14 @@ const Header = () => {
             label: (
               <Link className="no-underline hover:no-underline" to="/banners">
                 Banners
+              </Link>
+            ),
+          },
+          {
+            key: 'blog-articles-admin',
+            label: (
+              <Link className="no-underline hover:no-underline" to="/blog-articles-admin">
+                Gestionar blog
               </Link>
             ),
           },
@@ -420,7 +445,7 @@ const Header = () => {
                                 <span className="text-xs text-gray-500">
                                   {formatNotificationBody(item.body, item.payload, item.type)}
                                   <br />
-                                  {new Date(item.createdAt).toLocaleString()}
+                                  {formatDateTime(item.createdAt)}
                                 </span>
                               }
                             />
@@ -446,39 +471,43 @@ const Header = () => {
                 </Badge>
               </Popover>
             ) : null}
-            <Badge
-              color={theme.token.colorPrimary}
-              count={totalItemCount}
-              offset={[-4, 4]}
-              size="small"
-            >
-              <Button
-                aria-label="Carrito"
-                className={HEADER_ICON_BTN_CLASS}
-                icon={<ShoppingCartOutlined className="size-5" />}
-                type="text"
-                onClick={() => setCartDrawerOpen(true)}
-              />
-            </Badge>
+            {canShop ? (
+              <Badge
+                color={theme.token.colorPrimary}
+                count={totalItemCount}
+                offset={[-4, 4]}
+                size="small"
+              >
+                <Button
+                  aria-label="Carrito"
+                  className={HEADER_ICON_BTN_CLASS}
+                  icon={<ShoppingCartOutlined className="size-5" />}
+                  type="text"
+                  onClick={() => setCartDrawerOpen(true)}
+                />
+              </Badge>
+            ) : null}
           </nav>
           <div className="flex items-center gap-[8px] md:hidden">
-            <Badge
-              color={theme.token.colorPrimary}
-              count={totalItemCount}
-              offset={[-4, 4]}
-              size="small"
-            >
-              <Button
-                aria-label="Carrito"
-                className={HEADER_ICON_BTN_CLASS}
-                icon={<ShoppingCartOutlined className="size-5" />}
-                type="text"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setCartDrawerOpen(true);
-                }}
-              />
-            </Badge>
+            {canShop ? (
+              <Badge
+                color={theme.token.colorPrimary}
+                count={totalItemCount}
+                offset={[-4, 4]}
+                size="small"
+              >
+                <Button
+                  aria-label="Carrito"
+                  className={HEADER_ICON_BTN_CLASS}
+                  icon={<ShoppingCartOutlined className="size-5" />}
+                  type="text"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setCartDrawerOpen(true);
+                  }}
+                />
+              </Badge>
+            ) : null}
             {isLoading ? (
               <Skeleton.Button active size="default" style={{ height: 36, minWidth: 60 }} />
             ) : user ? (
@@ -525,6 +554,39 @@ const Header = () => {
             </Button>
           </div>
         </div>
+        {isHome && homeCatalog ? (
+          <div className="border-t border-gray-100 bg-gray-50 py-[12px]">
+            <div className="flex flex-col gap-[10px] lg:flex-row lg:items-center">
+              <div className="min-w-0 flex-1">
+                <Input.Search
+                  allowClear
+                  placeholder="Buscar productos…"
+                  size="large"
+                  value={homeCatalog.search}
+                  onChange={(e) => homeCatalog.setSearch(e.target.value)}
+                  onSearch={() => homeCatalog.scrollToCatalog()}
+                  className="[&_.ant-input-affix-wrapper]:rounded-xl [&_.ant-input-affix-wrapper]:border-gray-200 [&_.ant-input-affix-wrapper]:bg-white"
+                />
+              </div>
+              <div className="flex flex-col gap-[6px] sm:flex-row sm:items-center sm:gap-[12px]">
+                {selectedStoreName ? (
+                  <p className="m-0 shrink-0 text-xs text-gray-600 sm:text-sm">
+                    Comprando en:{' '}
+                    <span className="font-semibold text-gray-900">{selectedStoreName}</span>
+                  </p>
+                ) : null}
+                <Select
+                  className="w-full min-w-[180px] sm:w-[220px]"
+                  options={homeCatalog.stores.map((s) => ({ label: s.name, value: s.id }))}
+                  placeholder="Tienda"
+                  size="large"
+                  value={homeCatalog.selectedStoreId || undefined}
+                  onChange={homeCatalog.handleStoreChange}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
         {mobileMenuOpen && (
           <nav className="border-t border-gray-200 py-4 md:hidden">
             <div className="flex flex-col gap-4">
@@ -655,7 +717,7 @@ const Header = () => {
             {cart.map((item) => {
               const max = getMaxOrderQuantity(item.product);
               const lineTotal = item.product.price * item.quantity;
-              const lineTotalBs = formatBs(lineTotal);
+              const lineTotalBs = formatBs(lineTotal, usdRate);
               return (
                 <div
                   key={item.productId}
@@ -678,7 +740,8 @@ const Header = () => {
                       <p className="mt-[4px] text-xs text-gray-500">{item.product.brand}</p>
                     ) : null}
                     <p className="mt-[8px] text-sm tabular-nums text-primary">
-                      Bs {formatBs(item.product.price)} × {item.quantity} = Bs {lineTotalBs}
+                      Bs {formatBs(item.product.price, usdRate)} × {item.quantity} = Bs{' '}
+                      {lineTotalBs}
                     </p>
                     <div className="mt-[12px] flex flex-wrap items-center gap-[8px]">
                       <span className="text-xs text-gray-600">Cant.</span>

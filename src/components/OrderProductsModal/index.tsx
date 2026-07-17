@@ -2,7 +2,8 @@ import { Button, Empty, List, Modal, Typography } from 'antd';
 
 import type { OrderEntity } from '../../types/order';
 
-import { formatBs } from '../../constants/pricing';
+import { formatBs, formatOrderTotalBs, resolveOrderUsdRate } from '../../constants/pricing';
+import { useUsdRate } from '../../context/ExchangeRateContext';
 
 const { Text } = Typography;
 
@@ -17,7 +18,9 @@ function formatStoreName(storeName: null | string | undefined): string {
 }
 
 export function OrderProductsModal({ onClose, open, order }: OrderProductsModalProps) {
+  const liveRate = useUsdRate();
   const products = order?.products ?? [];
+  const orderRate = order ? resolveOrderUsdRate(order, liveRate) : liveRate;
 
   return (
     <Modal
@@ -57,7 +60,7 @@ export function OrderProductsModal({ onClose, open, order }: OrderProductsModalP
                       </div>
                     </div>
                   </div>
-                  <Text className="shrink-0">Bs {formatBs(line.lineTotal)}</Text>
+                  <Text className="shrink-0">Bs {formatBs(line.lineTotal, orderRate)}</Text>
                 </div>
               </List.Item>
             )}
@@ -65,7 +68,7 @@ export function OrderProductsModal({ onClose, open, order }: OrderProductsModalP
           {order ? (
             <div className="mt-4 flex items-center justify-between border-t pt-4">
               <Text strong>Total</Text>
-              <Text strong>Bs {formatBs(order.totalAmount)}</Text>
+              <Text strong>Bs {formatOrderTotalBs(order, liveRate)}</Text>
             </div>
           ) : null}
         </>

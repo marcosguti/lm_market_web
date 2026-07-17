@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as client from '../client';
 import {
   createAdminProduct,
   deactivateAdminProduct,
   getAdminProducts,
   patchAdminProduct,
 } from '../adminProducts';
+import * as client from '../client';
 
 vi.mock('../client', () => ({ api: vi.fn() }));
 

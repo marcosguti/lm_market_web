@@ -3,15 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { getMaxOrderQuantity, UNLIMITED_ORDER_MAX } from '../cartStock';
 
 describe('getMaxOrderQuantity', () => {
-  it('returns unlimited max when stock is null', () => {
-    expect(getMaxOrderQuantity({ totalStock: null })).toBe(UNLIMITED_ORDER_MAX);
+  it('returns unlimited when stockQuantity is null', () => {
+    expect(getMaxOrderQuantity({ stockQuantity: null })).toBe(UNLIMITED_ORDER_MAX);
   });
 
-  it('returns zero for negative stock', () => {
-    expect(getMaxOrderQuantity({ totalStock: -3 })).toBe(0);
+  it('clamps negative stock to zero', () => {
+    expect(getMaxOrderQuantity({ stockQuantity: -3 })).toBe(0);
   });
 
-  it('returns stock for positive values', () => {
-    expect(getMaxOrderQuantity({ totalStock: 5 })).toBe(5);
+  it('returns stockQuantity when positive', () => {
+    expect(getMaxOrderQuantity({ stockQuantity: 5 })).toBe(5);
   });
 });

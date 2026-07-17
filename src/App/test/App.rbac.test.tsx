@@ -23,6 +23,7 @@ const ROUTES = [
   { path: '/productos', allowedTypes: ['admin', 'superAdmin'], marker: 'route-productos' },
   { path: '/ofertas', allowedTypes: ['admin', 'superAdmin'], marker: 'route-ofertas' },
   { path: '/banners', allowedTypes: ['admin', 'superAdmin'], marker: 'route-banners' },
+  { path: '/blog-articles-admin', allowedTypes: ['admin', 'superAdmin'], marker: 'route-blog-articles-admin' },
   { path: '/reparto', allowedTypes: ['deliveryDriver'], marker: 'route-reparto' },
 ] as const;
 

@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { SelectProps } from 'antd';
+
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createSelectCapture, buildAntdTestMock } from '../../../test/antdMocks';
+import { buildAntdTestMock, createSelectCapture } from '../../../test/antdMocks';
 
 const authState = vi.hoisted(() => ({
   user: null as { id: string; type: string } | null,

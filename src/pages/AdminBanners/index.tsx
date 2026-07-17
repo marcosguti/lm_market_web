@@ -1,6 +1,6 @@
 import type { ColumnsType } from 'antd/es/table';
 
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   Button,
   Form,
@@ -12,6 +12,7 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
   Upload,
 } from 'antd';
@@ -198,17 +199,30 @@ const AdminBanners = () => {
     {
       key: 'actions',
       render: (_, row) => (
-        <Space>
-          <Button size="small" type="link" onClick={() => openEdit(row)}>
-            Editar
-          </Button>
-          <Button danger icon size="small" type="link" onClick={() => confirmDelete(row)}>
-            <DeleteOutlined />
-          </Button>
+        <Space size={0}>
+          <Tooltip title="Editar">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              aria-label="Editar banner"
+              onClick={() => openEdit(row)}
+            />
+          </Tooltip>
+          <Tooltip title="Eliminar">
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              aria-label="Eliminar banner"
+              onClick={() => confirmDelete(row)}
+            />
+          </Tooltip>
         </Space>
       ),
       title: 'Acciones',
-      width: 140,
+      width: 100,
     },
   ];
 

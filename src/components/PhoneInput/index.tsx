@@ -1,7 +1,8 @@
 import 'react-phone-number-input/style.css';
 
-import PhoneInputWithCountry from 'react-phone-number-input';
 import type { Country } from 'react-phone-number-input';
+
+import PhoneInputWithCountry from 'react-phone-number-input';
 
 import { DEFAULT_PHONE_COUNTRY } from '../../utils/phone';
 

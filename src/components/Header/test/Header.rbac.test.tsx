@@ -93,7 +93,7 @@ describe('Header RBAC menu and cart', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     expect(screen.getByText('Iniciar sesión')).toBeInTheDocument();
     expect(screen.getAllByText('Registro').length).toBeGreaterThanOrEqual(1);
@@ -108,7 +108,7 @@ describe('Header RBAC menu and cart', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     openUserMenu();
     await waitFor(() => {
@@ -125,7 +125,7 @@ describe('Header RBAC menu and cart', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     openUserMenu();
     await waitFor(() => {
@@ -144,7 +144,7 @@ describe('Header RBAC menu and cart', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     openUserMenu();
     await waitFor(() => {
@@ -162,12 +162,40 @@ describe('Header RBAC menu and cart', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     openUserMenu();
     await waitFor(() => {
       expect(screen.getAllByText('Panel reparto').length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it('hides cart icon for deliveryDriver', () => {
+    useAuthMock.mockReturnValue({
+      user: { firstName: 'Driver', lastName: 'User', type: 'deliveryDriver' },
+      isLoading: false,
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>
+    );
+    expect(screen.queryByLabelText('Carrito')).not.toBeInTheDocument();
+  });
+
+  it('hides cart icon for admin', () => {
+    useAuthMock.mockReturnValue({
+      user: { firstName: 'Admin', lastName: 'User', type: 'admin' },
+      isLoading: false,
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>
+    );
+    expect(screen.queryByLabelText('Carrito')).not.toBeInTheDocument();
   });
 
   it('guest cart checkout prompts login', async () => {
@@ -180,12 +208,14 @@ describe('Header RBAC menu and cart', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     openCartDrawer();
     fireEvent.click(screen.getByRole('button', { name: 'Ir a pagar' }));
     await waitFor(() => {
-      expect(vi.mocked(message.info)).toHaveBeenCalledWith('Inicia sesión para continuar al checkout.');
+      expect(vi.mocked(message.info)).toHaveBeenCalledWith(
+        'Inicia sesión para continuar al checkout.'
+      );
     });
   });
 
@@ -198,49 +228,13 @@ describe('Header RBAC menu and cart', () => {
     render(
       <MemoryRouter>
         <Header />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     openCartDrawer();
     fireEvent.click(screen.getByRole('button', { name: 'Ir a pagar' }));
     await waitFor(() => {
       expect(flushCartSyncMock).toHaveBeenCalled();
       expect(navigateMock).toHaveBeenCalledWith('/checkout');
-    });
-  });
-
-  it('admin cart checkout shows client-only message', async () => {
-    useAuthMock.mockReturnValue({
-      user: { firstName: 'Admin', lastName: 'User', type: 'admin' },
-      isLoading: false,
-      logout: vi.fn(),
-    });
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
-    openCartDrawer();
-    fireEvent.click(screen.getByRole('button', { name: 'Ir a pagar' }));
-    await waitFor(() => {
-      expect(vi.mocked(message.info)).toHaveBeenCalledWith('Solo usuarios cliente pueden finalizar el pago.');
-    });
-  });
-
-  it('deliveryDriver cart checkout shows client-only message', async () => {
-    useAuthMock.mockReturnValue({
-      user: { firstName: 'Driver', lastName: 'User', type: 'deliveryDriver' },
-      isLoading: false,
-      logout: vi.fn(),
-    });
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
-    openCartDrawer();
-    fireEvent.click(screen.getByRole('button', { name: 'Ir a pagar' }));
-    await waitFor(() => {
-      expect(vi.mocked(message.info)).toHaveBeenCalledWith('Solo usuarios cliente pueden finalizar el pago.');
     });
   });
 });

@@ -1,7 +1,7 @@
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
 
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   Button,
   DatePicker,
@@ -14,6 +14,7 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
   Upload,
 } from 'antd';
@@ -32,6 +33,7 @@ import {
   DEAL_IMAGE_MIN_WIDTH,
   validateDealImage,
 } from '../../utils/dealImageValidation';
+import { DATE_PICKER_FORMAT, formatDate } from '../../utils/formatDate';
 
 const { Title } = Typography;
 
@@ -245,7 +247,7 @@ const AdminDeals = () => {
       key: 'dates',
       render: (_, row) => (
         <span className="text-sm">
-          {dayjs(row.startDate).format('DD/MM/YY')} → {dayjs(row.endDate).format('DD/MM/YY')}
+          {formatDate(row.startDate)} → {formatDate(row.endDate)}
         </span>
       ),
       title: 'Vigencia',
@@ -268,16 +270,30 @@ const AdminDeals = () => {
     {
       key: 'actions',
       render: (_, row) => (
-        <Space>
-          <Button size="small" type="link" onClick={() => openEdit(row)}>
-            Editar
-          </Button>
-          <Button danger icon size="small" type="link" onClick={() => confirmDelete(row)}>
-            <DeleteOutlined />
-          </Button>
+        <Space size={0}>
+          <Tooltip title="Editar">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              aria-label="Editar oferta"
+              onClick={() => openEdit(row)}
+            />
+          </Tooltip>
+          <Tooltip title="Eliminar">
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              aria-label="Eliminar oferta"
+              onClick={() => confirmDelete(row)}
+            />
+          </Tooltip>
         </Space>
       ),
       title: 'Acciones',
+      width: 100,
     },
   ];
 
@@ -373,7 +389,7 @@ const AdminDeals = () => {
               <DatePicker
                 className="w-full"
                 disabledDate={disableBeforeToday}
-                format="DD/MM/YYYY"
+                format={DATE_PICKER_FORMAT}
                 onChange={() => {
                   void createForm.validateFields(['endDate']);
                 }}
@@ -388,11 +404,15 @@ const AdminDeals = () => {
               <DatePicker
                 className="w-full"
                 disabledDate={disableEndDate(createStartDate as Dayjs | undefined)}
-                format="DD/MM/YYYY"
+                format={DATE_PICKER_FORMAT}
               />
             </Form.Item>
           </div>
-          <Form.Item label="Descripción (opcional, máx 300 caracteres)" name="description" rules={[{ max: 300, message: 'Máximo 300 caracteres' }]}>
+          <Form.Item
+            label="Descripción (opcional, máx 300 caracteres)"
+            name="description"
+            rules={[{ max: 300, message: 'Máximo 300 caracteres' }]}
+          >
             <Input.TextArea maxLength={300} rows={2} showCount />
           </Form.Item>
           <Form.Item label="Activa" name="active" valuePropName="checked">
@@ -481,7 +501,7 @@ const AdminDeals = () => {
               <DatePicker
                 className="w-full"
                 disabledDate={disableBeforeToday}
-                format="DD/MM/YYYY"
+                format={DATE_PICKER_FORMAT}
                 onChange={() => {
                   void editForm.validateFields(['endDate']);
                 }}
@@ -496,11 +516,15 @@ const AdminDeals = () => {
               <DatePicker
                 className="w-full"
                 disabledDate={disableEndDate(editStartDate as Dayjs | undefined)}
-                format="DD/MM/YYYY"
+                format={DATE_PICKER_FORMAT}
               />
             </Form.Item>
           </div>
-          <Form.Item label="Descripción (opcional, máx 300 caracteres)" name="description" rules={[{ max: 300, message: 'Máximo 300 caracteres' }]}>
+          <Form.Item
+            label="Descripción (opcional, máx 300 caracteres)"
+            name="description"
+            rules={[{ max: 300, message: 'Máximo 300 caracteres' }]}
+          >
             <Input.TextArea maxLength={300} rows={2} showCount />
           </Form.Item>
           <Form.Item label="Activa" name="active" valuePropName="checked">

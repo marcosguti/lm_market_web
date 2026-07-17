@@ -6,10 +6,8 @@ import {
   Drawer,
   Empty,
   Image,
-  Input,
   InputNumber,
   message,
-  Modal,
   Pagination,
   Select,
   Skeleton,
@@ -22,8 +20,11 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { type CatalogFilterItem, fetchBrands, fetchDepartments } from '../../../api/catalog';
 import { api } from '../../../api/client';
-import { getStores, type Store } from '../../../api/stores';
+import { formatBs } from '../../../constants/pricing';
+import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
+import { useUsdRate } from '../../../context/ExchangeRateContext';
+import { useHomeCatalog } from '../../../context/HomeCatalogContext';
 import { theme } from '../../../theme';
 import { CatalogSidebar } from './CatalogSidebar';
 
@@ -41,7 +42,7 @@ type ProductRow = {
   code: string;
   department: string;
   imageUrl: string | null;
-  totalStock: number | null;
+  stockQuantity: number | null;
 };
 
 type ProductsResponse = {
@@ -63,14 +64,13 @@ const SORT_OPTIONS: { label: string; value: SortParam }[] = [
 ];
 
 const PRODUCT_IMAGE_HEIGHT = 180;
-const PRODUCT_IMAGE_MAX_HEIGHT = 160;
 
 function CatalogProductImage({ alt, src }: { alt: string; src: string }) {
   const [loaded, setLoaded] = useState(false);
 
   return (
     <div
-      className="relative flex w-full items-center justify-center overflow-hidden bg-white"
+      className="relative flex w-full items-center justify-center overflow-hidden bg-[#FCFCFC] p-[12px]"
       style={{ height: PRODUCT_IMAGE_HEIGHT }}
     >
       {!loaded ? (
@@ -81,24 +81,27 @@ function CatalogProductImage({ alt, src }: { alt: string; src: string }) {
       ) : null}
       <Image
         alt={alt}
-        className={`object-cover transition-opacity duration-300 ${
+        className={`object-contain transition-opacity duration-300 ${
           loaded ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         preview={false}
         src={src}
-        style={{ maxHeight: PRODUCT_IMAGE_MAX_HEIGHT }}
+        style={{ maxHeight: PRODUCT_IMAGE_HEIGHT - 24, maxWidth: '100%' }}
         onError={() => setLoaded(true)}
         onLoad={() => setLoaded(true)}
       />
-      <div className="absolute left-0 top-0 h-[4px] w-full" />
     </div>
   );
 }
 
-function CatalogProductCard({ p }: { p: ProductRow }) {
+function CatalogProductCard({ p, hideDepartment }: { p: ProductRow; hideDepartment?: boolean }) {
   const { addToCart } = useCart();
-  const maxOrder = p.totalStock != null ? Math.max(0, p.totalStock) : 9999;
+  const { user } = useAuth();
+  const canShop = !user || user.type === 'client';
+  const usdRate = useUsdRate();
+  const maxOrder = p.stockQuantity != null ? Math.max(0, p.stockQuantity) : 9999;
   const [qty, setQty] = useState(1);
+  const lowStock = p.stockQuantity != null && p.stockQuantity > 0 && p.stockQuantity < 20;
 
   const handleAdd = () => {
     const { added, requested } = addToCart(
@@ -106,9 +109,10 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
         id: p.id,
         brand: p.brand,
         code: p.code,
+        imageUrl: p.imageUrl ?? undefined,
         name: p.name,
         price: p.price,
-        totalStock: p.totalStock,
+        stockQuantity: p.stockQuantity,
       },
       qty
     );
@@ -123,56 +127,60 @@ function CatalogProductCard({ p }: { p: ProductRow }) {
 
   return (
     <motion.li
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
+      transition={{ duration: 0.3 }}
       className="group h-full"
     >
-      <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100/90 bg-white/90 shadow-md ring-1 ring-black/[0.03] backdrop-blur-sm transition-all duration-300 hover:-translate-y-[4px] hover:shadow-xl hover:ring-primary/20">
+      <article className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-md">
         {p.imageUrl ? (
           <CatalogProductImage key={p.imageUrl} alt={p.name} src={p.imageUrl} />
         ) : (
           <div
-            className="relative flex w-full items-center justify-center"
+            className="relative flex w-full items-center justify-center bg-[#FCFCFC]"
             style={{ height: PRODUCT_IMAGE_HEIGHT }}
           >
-            <span className="text-5xl text-white/70"></span>
+            <span className="text-sm text-gray-400">Sin imagen</span>
           </div>
         )}
-        <div className="flex flex-1 flex-col p-[16px] sm:p-[20px]">
-          <div className="mb-[8px] flex flex-wrap items-center gap-[6px]">
-            <Tag className="bg-primary/12 m-0 border-0 text-[11px] font-medium text-primary">
+        <div className="flex flex-1 flex-col p-[14px]">
+          {p.brand ? (
+            <p className="mb-[4px] truncate text-[11px] uppercase tracking-wide text-gray-500">
               {p.brand}
-            </Tag>
-            <span className="text-[11px] text-gray-400">{p.department}</span>
-          </div>
-          <h3 className="mb-[6px] line-clamp-2 text-[15px] font-semibold leading-snug text-gray-900">
+            </p>
+          ) : null}
+          <h3 className="mb-[8px] line-clamp-2 min-h-[2.5rem] text-[14px] font-semibold leading-snug text-gray-900">
             {p.name}
           </h3>
-          <div className="mt-auto border-t border-gray-100 pt-[12px]">
-            <p className="text-xl font-bold tabular-nums tracking-tight text-primary">
-              REF {p.price}
-            </p>
-            <p className="mt-[4px] text-[11px] text-gray-400">
-              Cód. {p.code}
-              {p.totalStock != null && p.totalStock < 20 ? (
-                <span className="ml-[10px] text-red-500">Quedan {p.totalStock} unidades</span>
+          {!hideDepartment && p.department ? (
+            <p className="mb-[8px] truncate text-[11px] text-gray-400">{p.department}</p>
+          ) : null}
+          <div className="mt-auto">
+            <div className="mb-[8px] flex items-baseline gap-[8px]">
+              <p className="text-xl font-bold tabular-nums tracking-tight text-primary">
+                Bs {formatBs(p.price, usdRate)}
+              </p>
+              {lowStock ? (
+                <span className="rounded-full bg-red-50 px-[8px] py-[2px] text-[10px] font-semibold text-red-600">
+                  Últimas unidades
+                </span>
               ) : null}
-            </p>
-            <div className="mt-[10px] flex flex-wrap items-center gap-[6px]">
-              <span className="text-[12px] text-gray-600">Cant.</span>
-              <InputNumber
-                className="min-w-[80px]"
-                max={maxOrder}
-                min={1}
-                size="small"
-                value={qty}
-                onChange={(v) => setQty(typeof v === 'number' && v >= 1 ? Math.trunc(v) : 1)}
-              />
-              <Button size="small" type="primary" onClick={handleAdd}>
-                Agregar
-              </Button>
             </div>
+            {canShop ? (
+              <div className="flex items-center gap-[8px]">
+                <InputNumber
+                  className="min-w-[72px] flex-1"
+                  max={maxOrder}
+                  min={1}
+                  size="small"
+                  value={qty}
+                  onChange={(v) => setQty(typeof v === 'number' && v >= 1 ? Math.trunc(v) : 1)}
+                />
+                <Button className="flex-1" size="small" type="primary" onClick={handleAdd}>
+                  Agregar
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
       </article>
@@ -184,10 +192,13 @@ const ProductsCatalog = ({
   externalDepartments,
   initialDepartmentId,
 }: ProductsCatalogProps = {}) => {
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const homeCatalog = useHomeCatalog();
+  const debouncedSearch = homeCatalog?.search.trim() ?? '';
+  const selectedStoreId = homeCatalog?.selectedStoreId ?? '';
+  const filtersReady = homeCatalog?.filtersReady ?? false;
+
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(50);
+  const [pageSize, setPageSize] = useState<number>(24);
   const [sort, setSort] = useState<SortParam>('');
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
@@ -200,17 +211,6 @@ const ProductsCatalog = ({
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ProductsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [stores, setStores] = useState<Store[]>([]);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-  const [filtersReady, setFiltersReady] = useState(false);
-  const { cart: cartItems, clearCart, setStoreId, storeId: cartStoreId } = useCart();
-
-  useEffect(() => {
-    const handle = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 500);
-    return () => window.clearTimeout(handle);
-  }, [search]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -230,34 +230,24 @@ const ProductsCatalog = ({
   }, [priceRange]);
 
   useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setPage(1);
+    }, 500);
+    return () => window.clearTimeout(handle);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
     let cancelled = false;
 
     void (async () => {
-      const [b, s] = await Promise.all([fetchBrands(), getStores()]);
-      if (cancelled) return;
-
-      setBrands(b);
-      setStores(s);
-
-      if (s.length > 0) {
-        const persistedStoreId = cartStoreId;
-        const initial =
-          persistedStoreId && s.some((store) => store.id === persistedStoreId)
-            ? persistedStoreId
-            : s[0].id;
-        setSelectedStoreId(initial);
-        if (initial !== persistedStoreId) setStoreId(initial);
-      }
-
-      setFiltersReady(true);
+      const b = await fetchBrands();
+      if (!cancelled) setBrands(b);
     })();
 
     return () => {
       cancelled = true;
     };
-    // Read cartStoreId once on mount; omit from deps to avoid re-fetch when store syncs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only filter bootstrap
-  }, [setStoreId]);
+  }, []);
 
   useEffect(() => {
     if (externalDepartments) return;
@@ -270,6 +260,7 @@ const ProductsCatalog = ({
   useEffect(() => {
     if (initialDepartmentId !== undefined) {
       setSelectedDepartmentId(initialDepartmentId);
+      setPage(1);
     }
   }, [initialDepartmentId]);
 
@@ -326,9 +317,9 @@ const ProductsCatalog = ({
 
   useEffect(() => {
     if (!filtersReady) return;
-    if (stores.length > 0 && !selectedStoreId) return;
+    if (!selectedStoreId) return;
     void load();
-  }, [load, filtersReady, stores.length, selectedStoreId]);
+  }, [load, filtersReady, selectedStoreId]);
 
   const handleSelectBrand = (id: string | null) => {
     setSelectedBrandId(id);
@@ -340,28 +331,6 @@ const ProductsCatalog = ({
     setSelectedDepartmentId(id);
     setPage(1);
     setFiltersDrawerOpen(false);
-  };
-
-  const handleStoreChange = (storeId: string) => {
-    if (cartItems.length > 0) {
-      Modal.confirm({
-        title: '¿Cambiar de tienda?',
-        content: 'Esto vaciará tu carrito.',
-        okText: 'Sí, cambiar',
-        cancelText: 'Cancelar',
-        onOk: () => {
-          clearCart();
-          setSelectedStoreId(storeId);
-          setStoreId(storeId);
-          setPage(1);
-          load();
-        },
-      });
-    } else {
-      setSelectedStoreId(storeId);
-      setStoreId(storeId);
-      setPage(1);
-    }
   };
 
   const handleClearFilters = () => {
@@ -381,6 +350,14 @@ const ProductsCatalog = ({
     selectedDepartmentId !== null ||
     priceRange[0] > 0 ||
     priceRange[1] < 50;
+
+  const catalogTitle = activeDepartmentName
+    ? activeDepartmentName
+    : activeBrandName
+      ? `Marca: ${activeBrandName}`
+      : debouncedSearch
+        ? `Resultados para “${debouncedSearch}”`
+        : 'Todos los productos';
 
   const sidebarProps = {
     brands,
@@ -402,28 +379,26 @@ const ProductsCatalog = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.45 }}
-        className="relative mx-auto mb-[64px] w-full max-w-[1800px] overflow-x-clip overflow-y-visible rounded-[24px] border border-gray-200/80 bg-white py-[24px] shadow-[0_24px_80px_-32px_rgba(0,0,0,0.15)]"
+        className="relative mx-auto w-full max-w-7xl overflow-x-clip rounded-2xl border border-gray-200 bg-white py-[24px]"
       >
-        <div
-          className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl"
-          aria-hidden
-        />
-        <div className="relative mx-auto w-full max-w-[2200px] px-[16px] sm:px-[24px] lg:px-[32px]">
-          <div className="mb-[32px] flex flex-col gap-[16px] md:mb-[40px] md:flex-row md:items-end md:justify-between">
+        <div className="relative mx-auto w-full px-[16px] sm:px-[24px] lg:px-[32px]">
+          <div className="mb-[24px] flex flex-col gap-[16px] md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="mb-[8px] text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
-                Catálogo de productos
+              <h2 className="mb-[6px] text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">
+                {catalogTitle}
               </h2>
-              <p className="max-w-xl text-base text-gray-600">
-                Busca por nombre, código, descripción o marca. Filtra por marca o categoría en el
-                panel lateral.
-              </p>
+              {result && result.total > 0 ? (
+                <p className="text-sm text-gray-600">
+                  Mostrando {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, result.total)} de{' '}
+                  {result.total} productos
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  Filtra por marca o categoría en el panel lateral.
+                </p>
+              )}
             </div>
-            <div className="flex w-full flex-col gap-[12px] sm:flex-row sm:items-end sm:justify-end md:max-w-2xl md:shrink-0">
+            <div className="flex w-full flex-col gap-[12px] sm:flex-row sm:items-end sm:justify-end md:max-w-md md:shrink-0">
               <Button
                 className="lg:hidden"
                 icon={<FilterOutlined />}
@@ -431,29 +406,8 @@ const ProductsCatalog = ({
               >
                 Filtros
               </Button>
-              <div className="w-full min-w-[200px] flex-1 sm:max-w-md">
-                <Input.Search
-                  allowClear
-                  placeholder="Buscar productos…"
-                  size="large"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  className="[&_.ant-input-affix-wrapper]:rounded-xl [&_.ant-input-affix-wrapper]:border-gray-200 [&_.ant-input-affix-wrapper]:shadow-sm"
-                />
-              </div>
               <Select
-                className="w-full min-w-[160px] sm:w-[200px]"
-                options={stores.map((s) => ({ label: s.name, value: s.id }))}
-                placeholder="Tienda"
-                size="large"
-                value={selectedStoreId || undefined}
-                onChange={handleStoreChange}
-              />
-              <Select
-                className="w-full min-w-[200px] sm:w-[240px]"
+                className="w-full min-w-[200px]"
                 options={SORT_OPTIONS}
                 placeholder="Ordenar por"
                 size="large"
@@ -478,6 +432,9 @@ const ProductsCatalog = ({
                   Categoría: {activeDepartmentName}
                 </Tag>
               ) : null}
+              <Button size="small" type="link" onClick={handleClearFilters}>
+                Limpiar filtros
+              </Button>
             </div>
           ) : null}
 
@@ -514,16 +471,26 @@ const ProductsCatalog = ({
                     type="error"
                   />
                 ) : result && result.data.length === 0 ? (
-                  <Empty className="py-[48px]" description="No hay productos para mostrar" />
+                  <Empty className="py-[48px]" description="No hay productos para mostrar">
+                    {hasFilter ? (
+                      <Button type="primary" onClick={handleClearFilters}>
+                        Limpiar filtros
+                      </Button>
+                    ) : null}
+                  </Empty>
                 ) : (
                   <>
-                    <ul className="mb-[40px] grid list-none gap-[20px] sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4 min-[2000px]:grid-cols-5 min-[2400px]:grid-cols-6">
+                    <ul className="mb-[32px] grid list-none gap-[16px] sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4">
                       {(result?.data ?? []).map((p) => (
-                        <CatalogProductCard key={p.id} p={p} />
+                        <CatalogProductCard
+                          key={p.id}
+                          p={p}
+                          hideDepartment={selectedDepartmentId !== null}
+                        />
                       ))}
                     </ul>
                     {result && result.total > 0 ? (
-                      <div className="flex flex-col items-center gap-[16px] border-t border-gray-200/80 pt-[32px] sm:flex-row sm:justify-center">
+                      <div className="flex flex-col items-center gap-[16px] border-t border-gray-200/80 pt-[24px] sm:flex-row sm:justify-center">
                         <Pagination
                           className="[&_.ant-pagination-item-active]:border-primary [&_.ant-pagination-item-active]:bg-primary [&_.ant-pagination-item-active_a]:!text-white"
                           current={page}

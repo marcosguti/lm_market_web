@@ -1,6 +1,6 @@
+import { Slider } from 'antd';
 import { useMemo, useState } from 'react';
 
-import { Slider } from 'antd';
 import type { CatalogFilterItem } from '../../../api/catalog';
 
 type CatalogSidebarProps = {

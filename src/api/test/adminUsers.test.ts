@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAdminUser, deleteAdminUser, getAdminUsers, patchAdminUser, verifyAdminUserEmail } from '../adminUsers';
 import * as client from '../client';
-import { getAdminUsers, createAdminUser, patchAdminUser, deleteAdminUser, verifyAdminUserEmail } from '../adminUsers';
 
 vi.mock('../client', () => ({
   api: vi.fn(),

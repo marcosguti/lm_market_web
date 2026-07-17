@@ -27,21 +27,32 @@ vi.mock('antd', () => ({
 }));
 
 function CartProbe() {
-  const { addToCart, cart, orderId, totalItemCount } = useCart();
+  const { addToCart, cart, flushCartSync, orderId, totalItemCount } = useCart();
   return (
     <div>
       <span data-testid="order-id">{orderId ?? ''}</span>
       <span data-testid="count">{totalItemCount}</span>
+      <span data-testid="first-image">{cart[0]?.product.imageUrl ?? ''}</span>
       <button
         type="button"
         onClick={() =>
           addToCart(
-            { id: 'db-product-id', code: 'SKU1', name: 'Product', price: 10, totalStock: 3 },
-            2,
+            {
+              id: 'db-product-id',
+              code: 'SKU1',
+              imageUrl: 'https://cdn.example.com/sku1.jpg',
+              name: 'Product',
+              price: 10,
+              stockQuantity: 20,
+            },
+            2
           )
         }
       >
         add
+      </button>
+      <button type="button" onClick={() => void flushCartSync()}>
+        flush
       </button>
       <span data-testid="cart-size">{cart.length}</span>
     </div>
@@ -95,6 +106,7 @@ describe('CartContext', () => {
           products: lines.map((line) => ({
             code: line.code,
             description: null,
+            imageUrl: 'https://cdn.example.com/sku1.jpg',
             lineTotal: line.quantity * 10,
             name: 'Product',
             quantity: line.quantity,
@@ -129,7 +141,7 @@ describe('CartContext', () => {
     render(
       <CartProvider>
         <CartProbe />
-      </CartProvider>,
+      </CartProvider>
     );
 
     await waitFor(() => {
@@ -148,34 +160,7 @@ describe('CartContext', () => {
     render(
       <CartProvider>
         <CartProbe />
-      </CartProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('order-id')).toHaveTextContent('order-1');
-    });
-
-    await userEvent.click(screen.getByRole('button', { name: 'add' }));
-
-    await waitFor(() => {
-      expect(patchOrderLines).toHaveBeenCalledTimes(1);
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    expect(patchOrderLines).toHaveBeenCalledTimes(1);
-    expect(patchOrderLines).toHaveBeenCalledWith(
-      'order-1',
-      [{ code: 'SKU1', quantity: 2 }],
-      'store-1',
-    );
-  });
-
-  it('auto syncs after addToCart', async () => {
-    render(
-      <CartProvider>
-        <CartProbe />
-      </CartProvider>,
+      </CartProvider>
     );
 
     await waitFor(() => {
@@ -188,7 +173,127 @@ describe('CartContext', () => {
       () => {
         expect(patchOrderLines).toHaveBeenCalledTimes(1);
       },
-      { timeout: 3000 },
+      { timeout: 2000 }
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(patchOrderLines).toHaveBeenCalledTimes(1);
+    expect(patchOrderLines).toHaveBeenCalledWith(
+      'order-1',
+      [{ code: 'SKU1', quantity: 2 }],
+      'store-1'
+    );
+  });
+
+  it('auto syncs after addToCart', async () => {
+    render(
+      <CartProvider>
+        <CartProbe />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-id')).toHaveTextContent('order-1');
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'add' }));
+
+    await waitFor(
+      () => {
+        expect(patchOrderLines).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 2000 }
+    );
+  });
+
+  it('debounces rapid addToCart clicks into a single patchOrderLines call', async () => {
+    render(
+      <CartProvider>
+        <CartProbe />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-id')).toHaveTextContent('order-1');
+    });
+
+    const addButton = screen.getByRole('button', { name: 'add' });
+    await userEvent.click(addButton);
+    await userEvent.click(addButton);
+    await userEvent.click(addButton);
+    await userEvent.click(addButton);
+    await userEvent.click(addButton);
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('count')).toHaveTextContent('10');
+      },
+      { timeout: 1000 }
+    );
+
+    await waitFor(
+      () => {
+        expect(patchOrderLines).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 2000 }
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(patchOrderLines).toHaveBeenCalledTimes(1);
+    expect(patchOrderLines).toHaveBeenCalledWith(
+      'order-1',
+      [{ code: 'SKU1', quantity: 10 }],
+      'store-1'
+    );
+  });
+
+  it('keeps product imageUrl after server sync', async () => {
+    render(
+      <CartProvider>
+        <CartProbe />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-id')).toHaveTextContent('order-1');
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'add' }));
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('first-image')).toHaveTextContent(
+          'https://cdn.example.com/sku1.jpg'
+        );
+      },
+      { timeout: 2000 }
+    );
+  });
+
+  it('flushCartSync syncs immediately without waiting for debounce', async () => {
+    render(
+      <CartProvider>
+        <CartProbe />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-id')).toHaveTextContent('order-1');
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'add' }));
+    await userEvent.click(screen.getByRole('button', { name: 'flush' }));
+
+    await waitFor(() => {
+      expect(patchOrderLines).toHaveBeenCalledTimes(1);
+    });
+
+    expect(patchOrderLines).toHaveBeenCalledWith(
+      'order-1',
+      [{ code: 'SKU1', quantity: 2 }],
+      'store-1'
     );
   });
 });

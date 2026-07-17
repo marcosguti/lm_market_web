@@ -4,47 +4,43 @@ import { useEffect, useState } from 'react';
 
 import { getActiveBanners } from '../../api/banners';
 import { type CatalogFilterItem, fetchDepartments } from '../../api/catalog';
+import { api } from '../../api/client';
 import { getActiveDeals } from '../../api/deals';
 import Carousel from '../../components/Carousel';
 import DealBannerModal from '../../components/DealBannerModal';
 import SEO from '../../components/SEO';
-import OfferCarousel from './OfferCarousel';
+import { useHomeCatalog } from '../../context/HomeCatalogContext';
+import DepartmentChips from './DepartmentChips';
 import OfferCard from './OfferCard';
+import OfferCarousel from './OfferCarousel';
 import ProductsCatalog from './ProductsCatalog';
+import ProductShelf, { type ShelfProduct } from './ProductShelf';
 
-const DEALS_SESSION_KEY = 'lm_deals_banner_dismissed';
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+type ShelfRow = {
+  departmentId: string;
+  title: string;
+  products: ShelfProduct[];
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.35,
-    },
-  },
+type ProductApiRow = ShelfProduct & {
+  createdAt?: string;
+};
+
+type ProductsApiResponse = {
+  data: ProductApiRow[];
 };
 
 const Home = () => {
-  const [showDeals, setShowDeals] = useState(
-    () => sessionStorage.getItem(DEALS_SESSION_KEY) !== '1'
-  );
+  const { scrollToCatalog, selectedStoreId } = useHomeCatalog() ?? {};
+  const [showDealsModal, setShowDealsModal] = useState(false);
   const [activeDeals, setActiveDeals] = useState<string[]>([]);
   const [dealsLoading, setDealsLoading] = useState(true);
   const [bannerSlides, setBannerSlides] = useState<{ imageUrl: string; alt?: string }[]>([]);
   const [bannersLoading, setBannersLoading] = useState(true);
   const [departments, setDepartments] = useState<CatalogFilterItem[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [shelfRows, setShelfRows] = useState<ShelfRow[]>([]);
+  const [newArrivals, setNewArrivals] = useState<ShelfProduct[]>([]);
 
   useEffect(() => {
     const loadDeals = async () => {
@@ -80,143 +76,163 @@ const Home = () => {
     })();
   }, []);
 
-  const handleCloseDeals = () => {
-    sessionStorage.setItem(DEALS_SESSION_KEY, '1');
-    setShowDeals(false);
-  };
+  useEffect(() => {
+    if (!selectedStoreId) return;
+    let cancelled = false;
 
-  const handleDeptClick = (deptId: string) => {
-    const newId = selectedDepartmentId === deptId ? null : deptId;
-    setSelectedDepartmentId(newId);
-    const catalogSection = document.getElementById('products-catalog');
-    if (catalogSection) {
-      catalogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    void (async () => {
+      const { data, ok } = await api<ProductsApiResponse>('/api/products', {
+        skipAuth: true,
+        params: { page: '1', pageSize: '24', storeId: selectedStoreId },
+      });
+      if (cancelled || !ok || !data?.data) return;
+
+      const sorted = [...data.data].sort((a, b) => {
+        const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+        const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
+        return bTime - aTime;
+      });
+      setNewArrivals(sorted.slice(0, 8));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedStoreId]);
+
+  useEffect(() => {
+    if (!selectedStoreId || departments.length === 0) return;
+    let cancelled = false;
+
+    void (async () => {
+      const featured = departments.slice(0, 3);
+      const rows = await Promise.all(
+        featured.map(async (dept) => {
+          const { data, ok } = await api<ProductsApiResponse>('/api/products', {
+            skipAuth: true,
+            params: {
+              page: '1',
+              pageSize: '8',
+              department: dept.id,
+              storeId: selectedStoreId,
+            },
+          });
+          if (!ok || !data?.data) {
+            return { departmentId: dept.id, title: `Explora ${dept.name}`, products: [] };
+          }
+          return {
+            departmentId: dept.id,
+            title: `Explora ${dept.name}`,
+            products: data.data,
+          };
+        })
+      );
+      if (!cancelled) setShelfRows(rows.filter((row) => row.products.length > 0));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [departments, selectedStoreId]);
+
+  const handleDeptSelect = (deptId: string | null) => {
+    setSelectedDepartmentId(deptId);
+    scrollToCatalog?.();
   };
 
   const handleOfferClick = () => {
-    sessionStorage.setItem(DEALS_SESSION_KEY, '0');
-    setShowDeals(true);
+    setShowDealsModal(true);
+  };
+
+  const handleCloseDeals = () => {
+    setShowDealsModal(false);
+  };
+
+  const handleShelfSeeAll = (departmentId: string) => {
+    setSelectedDepartmentId(departmentId);
+    scrollToCatalog?.();
   };
 
   return (
     <>
       <AnimatePresence>
-        {showDeals && activeDeals.length > 0 && (
+        {showDealsModal && activeDeals.length > 0 ? (
           <DealBannerModal
             images={activeDeals}
             loading={dealsLoading}
             onClose={handleCloseDeals}
-            onEmpty={() => setShowDeals(false)}
+            onEmpty={() => setShowDealsModal(false)}
           />
-        )}
+        ) : null}
       </AnimatePresence>
       <SEO
         title="Inicio"
         description="LM Market - Tu supermercado de confianza. Productos de excelente calidad al mejor precio. Ofertas especiales y atención personalizada."
       />
-      <div className="relative">
+
+      <div className="relative bg-gray-50">
         <Carousel
           key={bannerSlides.map((banner) => banner.imageUrl).join('|')}
           loading={bannersLoading}
           slides={bannerSlides}
         />
-
-        <div className="pointer-events-none absolute inset-0 z-[5] flex flex-col items-center justify-start pt-[32px] sm:pt-[40px] lg:pt-[48px] bg-gradient-to-r from-black/40 via-black/20 to-transparent text-white">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="text-3xl font-bold drop-shadow-lg sm:text-4xl lg:text-5xl"
-          >
-            Ofertas imperdibles
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mt-2 text-sm drop-shadow-md sm:text-base lg:text-lg"
-          >
-            Calidad al mejor precio
-          </motion.p>
-        </div>
       </div>
 
-      <div id="products-catalog" className="relative z-10 -mt-[400px] sm:-mt-[450px] lg:-mt-[500px] pb-[24px] sm:pb-[32px]">
-        <ProductsCatalog
-          externalDepartments={departments}
-          initialDepartmentId={selectedDepartmentId}
-        />
-      </div>
+      <DepartmentChips
+        departments={departments}
+        selectedDepartmentId={selectedDepartmentId}
+        onSelect={handleDeptSelect}
+      />
 
-      {departments.length > 0 && (
-        <section className="mx-auto max-w-7xl px-[16px] py-[20px] sm:px-[24px] sm:py-[28px] lg:px-[32px]">
-          <motion.h2
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="mb-[12px] text-base font-semibold text-gray-700 sm:text-lg"
-          >
-            Departamentos
-          </motion.h2>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-wrap gap-[8px]"
-          >
-            {departments.map((dept) => (
-              <motion.button
-                key={dept.id}
-                variants={itemVariants}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => handleDeptClick(dept.id)}
-                className={`rounded-xl bg-primary px-[16px] py-[10px] text-left text-white transition-all hover:bg-primary/90 ${
-                  selectedDepartmentId === dept.id ? 'ring-2 ring-white ring-offset-1' : ''
-                }`}
-              >
-                <span className="text-sm font-medium">{dept.name}</span>
-              </motion.button>
-            ))}
-          </motion.div>
-        </section>
-      )}
-
-      {!dealsLoading && activeDeals.length > 0 && (
+      {!dealsLoading && activeDeals.length > 0 ? (
         <section
           id="ofertas-section"
-          className="mx-auto max-w-7xl px-[16px] py-[32px] sm:px-[24px] lg:px-[32px]"
+          className="mx-auto max-w-7xl px-[16px] py-[20px] sm:px-[24px] sm:py-[28px] lg:px-[32px]"
         >
-          <div className="mb-[20px] flex flex-col gap-[8px] sm:flex-row sm:items-end sm:justify-between">
+          <div className="mb-[16px] flex flex-col gap-[8px] sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-                Ver Todas las Ofertas y Más
-              </h2>
-              <p className="mt-1 text-sm text-gray-600">
-                Las mejores promociones de la semana
-              </p>
+              <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Ofertas de la semana</h2>
+              <p className="mt-1 text-sm text-gray-600">Las mejores promociones para ti</p>
             </div>
             <button
               type="button"
               onClick={handleOfferClick}
               className="text-sm font-semibold text-primary hover:underline"
             >
-              Ver todo
+              Ver todas
             </button>
           </div>
 
           <OfferCarousel>
             {activeDeals.slice(0, 12).map((imageUrl) => (
-              <OfferCard
-                key={imageUrl}
-                imageUrl={imageUrl}
-                onClick={handleOfferClick}
-              />
+              <OfferCard key={imageUrl} imageUrl={imageUrl} onClick={handleOfferClick} />
             ))}
           </OfferCarousel>
         </section>
-      )}
+      ) : null}
+
+      {newArrivals.length > 0 ? (
+        <ProductShelf title="Recién agregados" products={newArrivals} onSeeAll={scrollToCatalog} />
+      ) : null}
+
+      {shelfRows.map((row) => (
+        <ProductShelf
+          key={row.departmentId}
+          title={row.title}
+          products={row.products}
+          onSeeAll={() => handleShelfSeeAll(row.departmentId)}
+        />
+      ))}
+
+      <div
+        id="products-catalog"
+        className="bg-gray-50 px-[16px] py-[24px] sm:px-[24px] sm:py-[32px] lg:px-[32px]"
+      >
+        <ProductsCatalog
+          externalDepartments={departments}
+          initialDepartmentId={selectedDepartmentId}
+        />
+      </div>
 
       <motion.section
         initial={{ opacity: 0 }}

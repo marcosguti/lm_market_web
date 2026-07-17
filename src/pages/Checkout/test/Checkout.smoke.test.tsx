@@ -25,7 +25,7 @@ vi.mock('../../../api/payments', () => ({
   getPaymentBanks: vi.fn().mockResolvedValue({ ok: true, data: { banks: [] } }),
   getPaymentConfig: vi.fn().mockResolvedValue({
     ok: true,
-    data: { megasoftP2cEnabled: false, usdRate: 40 },
+    data: { megasoftEnabled: false, usdRate: 40 },
   }),
   verifyMobilePayment: vi.fn(),
 }));
@@ -61,7 +61,7 @@ describe('Checkout page smoke', () => {
     render(
       <MemoryRouter>
         <CheckoutPage />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText('Finalizar pedido')).toBeInTheDocument();
@@ -72,10 +72,35 @@ describe('Checkout page smoke', () => {
     render(
       <MemoryRouter>
         <CheckoutPage />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText(/efectivo/i)).toBeInTheDocument();
+    });
+  });
+
+  it('requires payment screenshot for cash checkout', async () => {
+    render(
+      <MemoryRouter>
+        <CheckoutPage />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Comprobante de pago')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Obligatorio\. Un administrador revisará el comprobante\./i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('limits delivery address to 500 characters', async () => {
+    render(
+      <MemoryRouter>
+        <CheckoutPage />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Calle 123/i)).toHaveAttribute('maxlength', '500');
     });
   });
 });

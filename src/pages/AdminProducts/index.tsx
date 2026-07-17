@@ -1,6 +1,6 @@
 import type { ColumnsType } from 'antd/es/table';
 
-import { UploadOutlined } from '@ant-design/icons';
+import { EditOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   Button,
   Form,
@@ -12,9 +12,10 @@ import {
   Select,
   Space,
   Switch,
-  Tabs,
   Table,
+  Tabs,
   Tag,
+  Tooltip,
   Typography,
   Upload,
 } from 'antd';
@@ -219,18 +220,32 @@ const AdminProducts = () => {
     {
       key: 'actions',
       render: (_, row) => (
-        <Space>
-          <Button size="small" type="link" onClick={() => openEdit(row)}>
-            Editar
-          </Button>
+        <Space size={0}>
+          <Tooltip title="Editar">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              aria-label="Editar producto"
+              onClick={() => openEdit(row)}
+            />
+          </Tooltip>
           {row.active ? (
-            <Button danger size="small" type="link" onClick={() => confirmDeactivate(row)}>
-              Desactivar
-            </Button>
+            <Tooltip title="Desactivar">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<StopOutlined />}
+                aria-label="Desactivar producto"
+                onClick={() => confirmDeactivate(row)}
+              />
+            </Tooltip>
           ) : null}
         </Space>
       ),
       title: 'Acciones',
+      width: 100,
     },
   ];
 

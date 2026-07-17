@@ -48,7 +48,7 @@ const Contact = () => {
     email: string;
     nombre: string;
   }) => {
-    // eslint-disable-next-line no-console -- placeholder hasta integrar API de contacto
+     
     console.log('Form submitted:', values);
   };
 

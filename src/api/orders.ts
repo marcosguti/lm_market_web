@@ -1,4 +1,9 @@
-import type { InventoryChange, OrderEntity, OrderStatus } from '../types/order';
+import type {
+  InventoryChange,
+  OrderEntity,
+  OrderStatus,
+  OrderStatusHistoryEntry,
+} from '../types/order';
 
 import { api } from './client';
 
@@ -43,6 +48,7 @@ export async function patchOrderLines(
 }
 
 export interface ConfirmPaymentParams {
+  deliveryAddress: string;
   method: 'cash' | 'zelle' | 'mobilePayment' | 'binance';
   reference?: string;
   paidAt?: string;
@@ -52,6 +58,7 @@ export interface ConfirmPaymentParams {
 export async function confirmOrderPayment(orderId: string, params: ConfirmPaymentParams) {
   const formData = new FormData();
   formData.append('method', params.method);
+  formData.append('deliveryAddress', params.deliveryAddress);
   if (params.reference) formData.append('reference', params.reference);
   if (params.paidAt) formData.append('paidAt', params.paidAt);
   if (params.screenshot) formData.append('screenshot', params.screenshot);
@@ -86,7 +93,7 @@ export interface KitchenOrdersFilters {
 export async function getKitchenOrders(
   page: number = 1,
   pageSize: number = 20,
-  filters: KitchenOrdersFilters = {},
+  filters: KitchenOrdersFilters = {}
 ) {
   const params: Record<string, string> = {
     page: String(page),
@@ -103,9 +110,16 @@ export async function getKitchenOrders(
   });
 }
 
-export async function patchAdminOrderStatus(orderId: string, status: OrderStatus) {
+export async function patchAdminOrderStatus(
+  orderId: string,
+  status: OrderStatus,
+  cancellationReason?: string
+) {
   return api<{ order: OrderEntity }>(`/api/admin/orders/${orderId}/status`, {
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({
+      status,
+      ...(cancellationReason ? { cancellationReason } : {}),
+    }),
     method: 'PATCH',
   });
 }
@@ -114,15 +128,6 @@ export async function verifyPayment(orderId: string, verify: boolean) {
   return api<{ order: OrderEntity }>(`/api/admin/orders/${orderId}/verify-payment`, {
     body: JSON.stringify({ verify }),
     method: 'PATCH',
-  });
-}
-
-export async function getDeliveryAvailable(page: number = 1, pageSize: number = 20) {
-  return api<PaginatedOrders>('/api/delivery/orders/available', {
-    params: {
-      page: String(page),
-      pageSize: String(pageSize),
-    },
   });
 }
 
@@ -135,14 +140,35 @@ export async function getDeliveryMine(page: number = 1, pageSize: number = 20) {
   });
 }
 
-export async function claimDeliveryOrder(orderId: string) {
-  return api<{ order: OrderEntity }>(`/api/delivery/orders/${orderId}/claim`, {
+export async function assignDelivery(orderId: string, deliveryUserId: string) {
+  return api<{ order: OrderEntity }>(`/api/admin/orders/${orderId}/assign-delivery`, {
+    body: JSON.stringify({ deliveryUserId }),
     method: 'POST',
   });
 }
 
-export async function markDelivered(orderId: string) {
-  return api<{ order: OrderEntity }>(`/api/delivery/orders/${orderId}/delivered`, {
+export async function unassignDelivery(orderId: string) {
+  return api<{ order: OrderEntity }>(`/api/admin/orders/${orderId}/unassign-delivery`, {
+    method: 'POST',
+  });
+}
+
+export async function startDelivery(orderId: string) {
+  return api<{ order: OrderEntity }>(`/api/delivery/orders/${orderId}/start`, {
     method: 'PATCH',
   });
+}
+
+export async function markDelivered(orderId: string, deliveryProof: File) {
+  const formData = new FormData();
+  formData.append('deliveryProof', deliveryProof);
+  return api<{ order: OrderEntity }>(`/api/delivery/orders/${orderId}/delivered`, {
+    body: formData as unknown as string,
+    method: 'PATCH',
+    skipContentType: true,
+  });
+}
+
+export async function getOrderStatusHistory(orderId: string) {
+  return api<{ history: OrderStatusHistoryEntry[] }>(`/api/admin/orders/${orderId}/status-history`);
 }

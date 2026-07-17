@@ -1,6 +1,23 @@
 import type { ColumnsType } from 'antd/es/table';
 
-import { Button, Form, Input, message, Modal, Select, Space, Table, Tag, Typography } from 'antd';
+import {
+  CheckCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+} from '@ant-design/icons';
+import {
+  Button,
+  Form,
+  Input,
+  message,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -237,23 +254,43 @@ const Users = () => {
     {
       key: 'actions',
       render: (_, row) => (
-        <Space>
-          <Button size="small" type="link" onClick={() => openEdit(row)}>
-            Editar
-          </Button>
+        <Space size={0}>
+          <Tooltip title="Editar">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              aria-label="Editar usuario"
+              onClick={() => openEdit(row)}
+            />
+          </Tooltip>
           {!row.emailVerified ? (
-            <Button size="small" type="link" onClick={() => confirmVerifyEmail(row)}>
-              Verificar email
-            </Button>
+            <Tooltip title="Verificar email">
+              <Button
+                type="text"
+                size="small"
+                icon={<CheckCircleOutlined />}
+                aria-label="Verificar email"
+                onClick={() => confirmVerifyEmail(row)}
+              />
+            </Tooltip>
           ) : null}
           {currentUser?.id !== row.id ? (
-            <Button danger size="small" type="link" onClick={() => confirmDelete(row)}>
-              Eliminar
-            </Button>
+            <Tooltip title="Eliminar">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                aria-label="Eliminar usuario"
+                onClick={() => confirmDelete(row)}
+              />
+            </Tooltip>
           ) : null}
         </Space>
       ),
       title: 'Acciones',
+      width: 120,
     },
   ];
 

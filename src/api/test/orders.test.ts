@@ -2,16 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as client from '../client';
 import {
-  claimDeliveryOrder,
   confirmOrderPayment,
   ensureCart,
-  getDeliveryAvailable,
   getDeliveryMine,
   getKitchenOrders,
   getOrder,
   getOrderHistory,
   markDelivered,
   patchOrderLines,
+  startDelivery,
 } from '../orders';
 
 vi.mock('../client', () => ({
@@ -27,6 +26,7 @@ describe('orders api', () => {
     vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
     const screenshot = new File(['x'], 'proof.png', { type: 'image/png' });
     await confirmOrderPayment('order-1', {
+      deliveryAddress: 'Calle 123',
       method: 'zelle',
       reference: 'REF1',
       paidAt: '2026-01-01T12:00:00.000Z',
@@ -38,6 +38,7 @@ describe('orders api', () => {
     expect(options?.skipContentType).toBe(true);
     const formData = options?.body as FormData;
     expect(formData.get('method')).toBe('zelle');
+    expect(formData.get('deliveryAddress')).toBe('Calle 123');
     expect(formData.get('reference')).toBe('REF1');
     expect(formData.get('paidAt')).toBe('2026-01-01T12:00:00.000Z');
     expect(formData.get('screenshot')).toBe(screenshot);
@@ -73,28 +74,23 @@ describe('orders api', () => {
     });
   });
 
-  it('getDeliveryAvailable calls delivery available endpoint', async () => {
-    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { data: [] } });
-    await getDeliveryAvailable(1, 50);
-    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/available', {
-      params: { page: '1', pageSize: '50' },
-    });
-  });
-
-  it('claimDeliveryOrder posts to claim endpoint', async () => {
+  it('startDelivery patches start endpoint', async () => {
     vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
-    await claimDeliveryOrder('order-1');
-    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/order-1/claim', {
-      method: 'POST',
-    });
-  });
-
-  it('markDelivered patches delivered endpoint', async () => {
-    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
-    await markDelivered('order-1');
-    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/order-1/delivered', {
+    await startDelivery('order-1');
+    expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/order-1/start', {
       method: 'PATCH',
     });
+  });
+
+  it('markDelivered patches delivered endpoint with proof file', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
+    const proof = new File(['x'], 'proof.jpg', { type: 'image/jpeg' });
+    await markDelivered('order-1', proof);
+    const [, options] = vi.mocked(client.api).mock.calls[0];
+    expect(options?.method).toBe('PATCH');
+    expect(options?.skipContentType).toBe(true);
+    const formData = options?.body as FormData;
+    expect(formData.get('deliveryProof')).toBe(proof);
   });
 
   it('ensureCart calls cart endpoint', async () => {

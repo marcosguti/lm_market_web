@@ -6,22 +6,27 @@ import type { OrderEntity } from '../../types/order';
 
 import { getOrderHistory } from '../../api/orders';
 import { OrderProductsModal } from '../../components/OrderProductsModal';
+import { ShortOrderId } from '../../components/ShortOrderId';
+import { formatOrderTotalBs } from '../../constants/pricing';
+import { useUsdRate } from '../../context/ExchangeRateContext';
 import { connectSocket } from '../../realtime/socket';
+import { formatDateTime } from '../../utils/formatDate';
 import { ORDER_STATUS_LABELS } from '../../utils/orderStatus';
-import { formatShortOrderId } from '../../utils/orderId';
 
 const { Title } = Typography;
 
 const TOKEN_KEY = 'lm_market_token';
 
 const statusColor: Record<string, string> = {
+  assignedToDeliveryDriver: 'geekblue',
   cancelled: 'red',
-  outForDelivery: 'blue',
+  delivering: 'blue',
   delivered: 'green',
-  readyForDelivery: 'cyan',
   paymentConfirmed: 'gold',
-  pending: 'orange',
+  paymentPendingConfirmation: 'orange',
+  pending: 'default',
   preparing: 'purple',
+  readyForDelivery: 'cyan',
 };
 
 interface OrderUpdatedPayload {
@@ -31,6 +36,7 @@ interface OrderUpdatedPayload {
 }
 
 const MyOrdersPage = () => {
+  const usdRate = useUsdRate();
   const [data, setData] = useState<OrderEntity[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -112,7 +118,7 @@ const MyOrdersPage = () => {
             title: 'Orden',
             dataIndex: 'id',
             key: 'id',
-            render: (id: string) => formatShortOrderId(id),
+            render: (id: string) => <ShortOrderId id={id} />,
           },
           {
             title: 'Estado',
@@ -134,17 +140,13 @@ const MyOrdersPage = () => {
             title: 'Total',
             dataIndex: 'totalAmount',
             key: 'totalAmount',
-            render: (value: number) =>
-              `REF ${value.toLocaleString('es-VE', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`,
+            render: (_value: number, row: OrderEntity) => `Bs ${formatOrderTotalBs(row, usdRate)}`,
           },
           {
             title: 'Fecha',
             dataIndex: 'createdAt',
             key: 'createdAt',
-            render: (value: string) => new Date(value).toLocaleString(),
+            render: (value: string) => formatDateTime(value),
           },
           {
             title: 'Acciones',

@@ -9,13 +9,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import VerifyEmailRoute from './components/VerifyEmailRoute';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { ExchangeRateProvider } from './context/ExchangeRateContext';
 import About from './pages/About';
 import Account from './pages/Account';
 import AdminBanners from './pages/AdminBanners';
+import AdminBlogArticles from './pages/AdminBlogArticles';
 import AdminDeals from './pages/AdminDeals';
 import AdminOrdersPage from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
 import Blog from './pages/Blog';
+import BlogDetail from './pages/BlogDetail';
 import CheckoutPage from './pages/Checkout';
 import Contact from './pages/Contact';
 import DeliveryOrdersPage from './pages/DeliveryOrders';
@@ -27,9 +30,9 @@ import MyOrdersPage from './pages/MyOrders';
 import RecoverPassword from './pages/RecoverPassword';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
-import VerifyEmail from './pages/VerifyEmail';
 import Terms from './pages/Terms';
 import Users from './pages/Users';
+import VerifyEmail from './pages/VerifyEmail';
 import GlobalStyles from './styles/GlobalStyles';
 import { theme } from './theme';
 
@@ -49,13 +52,15 @@ function App() {
       <ConfigProvider theme={theme}>
         <GlobalStyles />
         <AuthProvider>
-          <CartProvider>
-            <BrowserRouter>
-              <Layout>
-                <Routes>
+          <ExchangeRateProvider>
+            <CartProvider>
+              <BrowserRouter>
+                <Layout>
+                  <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/nosotros" element={<About />} />
                   <Route path="/blog" element={<Blog />} />
+                  <Route path="/blog/:id" element={<BlogDetail />} />
                   <Route path="/terminos" element={<Terms />} />
                   <Route path="/preguntas-frecuentes" element={<FAQ />} />
                   <Route path="/contacto" element={<Contact />} />
@@ -137,6 +142,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/blog-articles-admin"
+                    element={
+                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                        <AdminBlogArticles />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/reparto"
                     element={
                       <ProtectedRoute allowedTypes={['deliveryDriver']}>
@@ -148,6 +161,7 @@ function App() {
               </Layout>
             </BrowserRouter>
           </CartProvider>
+          </ExchangeRateProvider>
         </AuthProvider>
       </ConfigProvider>
     </HelmetProvider>

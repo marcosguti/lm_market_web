@@ -1,6 +1,7 @@
-import { Input } from 'antd';
 import type { OTPProps } from 'antd/es/input/OTP';
 import type { CSSProperties } from 'react';
+
+import { Input } from 'antd';
 
 import { OTP_CELL_SIZE_PX, OTP_DIGIT_COUNT } from '../../constants/formTheme';
 

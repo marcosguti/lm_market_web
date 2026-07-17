@@ -34,6 +34,8 @@ import {
 import { formatBs, usdToBs } from '../../constants/pricing';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useUsdRate } from '../../context/ExchangeRateContext';
+import { DATE_PICKER_FORMAT } from '../../utils/formatDate';
 import {
   getInventoryMessage as buildInventoryMessage,
   isMegasoftP2cCheckout,
@@ -65,6 +67,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { clearCart, flushCartSync, replaceFromOrderLines } = useCart();
+  const liveUsdRate = useUsdRate();
   const [order, setOrder] = useState<null | OrderEntity>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
@@ -129,12 +132,18 @@ const CheckoutPage = () => {
     [order]
   );
 
+  const checkoutRate =
+    paymentConfig?.usdRate && paymentConfig.usdRate > 0 ? paymentConfig.usdRate : liveUsdRate;
+
   const megasoftAmountBs = useMemo(
-    () => (order && megasoftP2c ? usdToBs(order.totalAmount) : null),
-    [megasoftP2c, order]
+    () => (order && megasoftP2c ? usdToBs(order.totalAmount, checkoutRate) : null),
+    [checkoutRate, megasoftP2c, order]
   );
 
-  const orderTotalBs = useMemo(() => (order ? formatBs(order.totalAmount) : null), [order]);
+  const orderTotalBs = useMemo(
+    () => (order ? formatBs(order.totalAmount, checkoutRate) : null),
+    [checkoutRate, order]
+  );
 
   const handleScreenshotChange = (info: { file: File }) => {
     const file = info.file;
@@ -174,7 +183,11 @@ const CheckoutPage = () => {
       setVoucherText(normalizeVoucherText(voucher));
       setVoucherOpen(true);
     }
-    setInventoryAlert('Pago confirmado. Te notificaremos cuando preparemos tu pedido.');
+    setInventoryAlert(
+      updatedOrder.status === 'paymentPendingConfirmation'
+        ? 'Comprobante enviado. Un administrador lo revisará y te notificaremos cuando el pago sea confirmado.'
+        : 'Pago confirmado. Te notificaremos cuando preparemos tu pedido.'
+    );
     setAlertType('success');
     clearCart({ afterCheckout: true });
     if (!voucher) {
@@ -190,10 +203,11 @@ const CheckoutPage = () => {
       setPaying(true);
 
       if (megasoftP2c) {
-        const amount = megasoftAmountBs ?? usdToBs(order.totalAmount);
+        const amount = megasoftAmountBs ?? usdToBs(order.totalAmount, checkoutRate);
         const result = await verifyMobilePayment(order.id, {
           amount,
           bankCode: values.payerBankCode as string,
+          deliveryAddress: values.deliveryAddress as string,
           nationalId: values.payerNationalId as string,
           phone: values.payerPhone as string,
           reference: values.payerReference as string,
@@ -237,7 +251,7 @@ const CheckoutPage = () => {
 
       const isCash = values.paymentMethod === 'cash';
 
-      if (!isCash && !screenshotFile) {
+      if (!screenshotFile) {
         setPaying(false);
         void message.error('Debes adjuntar el comprobante de pago');
         return;
@@ -250,10 +264,11 @@ const CheckoutPage = () => {
       }
 
       const result = await confirmOrderPayment(order.id, {
+        deliveryAddress: values.deliveryAddress as string,
         method: values.paymentMethod,
         reference: isCash ? undefined : values.reference,
         paidAt,
-        screenshot: isCash ? undefined : (screenshotFile ?? undefined),
+        screenshot: screenshotFile,
       });
 
       setPaying(false);
@@ -314,9 +329,17 @@ const CheckoutPage = () => {
             <Form.Item
               name="deliveryAddress"
               label="Dirección"
-              rules={[{ required: true, message: 'La dirección es obligatoria' }]}
+              rules={[
+                { required: true, message: 'La dirección es obligatoria' },
+                { max: 500, message: 'Máximo 500 caracteres' },
+              ]}
             >
-              <Input.TextArea rows={2} placeholder="Ej: Calle 123, Caracas, Venezuela" />
+              <Input.TextArea
+                rows={2}
+                maxLength={500}
+                showCount
+                placeholder="Ej: Calle 123, Caracas, Venezuela"
+              />
             </Form.Item>
           </Form>
         </Card>
@@ -412,34 +435,42 @@ const CheckoutPage = () => {
                     </Form.Item>
                   ) : null}
                 </>
-              ) : paymentMethod !== 'cash' ? (
+              ) : (
                 <>
-                  <Form.Item
-                    name="reference"
-                    label="Número de confirmación"
-                    rules={[
-                      { required: true, message: 'El número de confirmación es obligatorio' },
-                      { min: 3, message: 'Mínimo 3 caracteres' },
-                    ]}
-                  >
-                    <Input placeholder="Email Zelle, teléfono o ID de transacción" />
-                  </Form.Item>
+                  {paymentMethod !== 'cash' ? (
+                    <>
+                      <Form.Item
+                        name="reference"
+                        label="Número de confirmación"
+                        rules={[
+                          { required: true, message: 'El número de confirmación es obligatorio' },
+                          { min: 3, message: 'Mínimo 3 caracteres' },
+                        ]}
+                      >
+                        <Input placeholder="Email Zelle, teléfono o ID de transacción" />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="paidAt"
+                        label="Fecha de pago"
+                        rules={[{ required: true, message: 'La fecha de pago es obligatoria' }]}
+                      >
+                        <DatePicker
+                          format={DATE_PICKER_FORMAT}
+                          disabledDate={(current) =>
+                            current.isAfter(today) || current.isBefore(minDate)
+                          }
+                          className="w-full"
+                        />
+                      </Form.Item>
+                    </>
+                  ) : null}
 
                   <Form.Item
-                    name="paidAt"
-                    label="Fecha de pago"
-                    rules={[{ required: true, message: 'La fecha de pago es obligatoria' }]}
+                    label="Comprobante de pago"
+                    required
+                    help="Obligatorio. Un administrador revisará el comprobante."
                   >
-                    <DatePicker
-                      format="DD/MM/YYYY"
-                      disabledDate={(current) =>
-                        current.isAfter(today) || current.isBefore(minDate)
-                      }
-                      className="w-full"
-                    />
-                  </Form.Item>
-
-                  <Form.Item label="Comprobante de pago">
                     <Upload
                       accept="image/jpeg,image/png,image/webp"
                       maxCount={1}
@@ -471,7 +502,7 @@ const CheckoutPage = () => {
                     </Text>
                   </Form.Item>
                 </>
-              ) : null}
+              )}
             </Form>
           </Space>
         </Card>
@@ -494,7 +525,7 @@ const CheckoutPage = () => {
                           {line.code} · Cantidad: {line.quantity}
                         </div>
                       </div>
-                      <Text>Bs {formatBs(line.lineTotal)}</Text>
+                      <Text>Bs {formatBs(line.lineTotal, checkoutRate)}</Text>
                     </div>
                   </List.Item>
                 )}

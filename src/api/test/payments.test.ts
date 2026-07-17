@@ -13,7 +13,11 @@ describe('payments api', () => {
   });
 
   it('getPaymentConfig calls public config endpoint', async () => {
-    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { megasoftEnabled: false } });
+    vi.mocked(client.api).mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { megasoftEnabled: false },
+    });
     await getPaymentConfig();
     expect(client.api).toHaveBeenCalledWith('/api/payments/config', { skipAuth: true });
   });
@@ -29,6 +33,7 @@ describe('payments api', () => {
     const params = {
       amount: 10,
       bankCode: '0105',
+      deliveryAddress: 'Calle 123',
       nationalId: 'V12345678',
       phone: '04141234567',
       reference: 'REF1',

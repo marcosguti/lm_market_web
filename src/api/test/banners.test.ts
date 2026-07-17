@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as client from '../client';
 import { createAdminBanner, deleteAdminBanner, getActiveBanners, getAdminBanners, patchAdminBanner } from '../banners';
+import * as client from '../client';
 
 vi.mock('../client', () => ({ api: vi.fn() }));
 

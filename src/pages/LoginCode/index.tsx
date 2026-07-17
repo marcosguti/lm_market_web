@@ -2,8 +2,8 @@ import { Alert, Button, Form, Input, Typography } from 'antd';
 import { useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-import SEO from '../../components/SEO';
 import { OtpInput } from '../../components/OtpInput';
+import SEO from '../../components/SEO';
 import { OTP_DIGIT_COUNT } from '../../constants/formTheme';
 import { useAuth } from '../../context/AuthContext';
 import { useAutoDismissError } from '../../hooks/useAutoDismissError';

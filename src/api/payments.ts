@@ -13,6 +13,9 @@ export interface PaymentConfig {
     phone: string;
     rif: string;
   };
+  usdRate: number;
+  usdRateSource?: string;
+  usdRateUpdatedAt?: null | string;
 }
 
 export async function getPaymentBanks() {
@@ -26,6 +29,7 @@ export async function getPaymentConfig() {
 export interface VerifyMobilePaymentParams {
   amount: number;
   bankCode: string;
+  deliveryAddress: string;
   nationalId: string;
   phone: string;
   reference: string;

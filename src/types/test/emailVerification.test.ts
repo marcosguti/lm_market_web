@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  isValidEmailVerificationState,
   type EmailVerificationLocationState,
+  isValidEmailVerificationState,
 } from '../emailVerification';
 
 describe('emailVerification types', () => {

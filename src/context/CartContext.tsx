@@ -19,6 +19,7 @@ import { useAuth } from './AuthContext';
 
 const CART_KEY = 'lm_market_cart';
 const STORE_KEY = 'lm_market_store';
+const CART_SYNC_DEBOUNCE_MS = 500;
 
 export interface CartProduct {
   code?: string;
@@ -28,7 +29,7 @@ export interface CartProduct {
   imageUrl?: string;
   brand?: string;
   /** Existencia conocida; si es null/undefined no se limita por stock en UI. */
-  totalStock?: number | null;
+  stockQuantity?: number | null;
 }
 
 export interface CartItem {
@@ -107,12 +108,54 @@ function mapOrderLinesToCart(lines: OrderLine[]): CartItem[] {
     product: {
       code: line.code,
       id: line.code,
+      imageUrl: line.imageUrl ?? undefined,
       name: line.name,
       price: line.unitPrice,
     },
     productId: line.code,
     quantity: Math.max(1, Math.trunc(line.quantity)),
   }));
+}
+
+function enrichCartFromOrderLines(cart: CartItem[], lines: OrderLine[]): CartItem[] {
+  const metaByCode = new Map(
+    lines.map((line) => [
+      line.code,
+      { imageUrl: line.imageUrl ?? undefined, name: line.name, price: line.unitPrice },
+    ])
+  );
+  if (metaByCode.size === 0) return cart;
+
+  let changed = false;
+  const next = cart.map((item) => {
+    const code = item.product.code?.trim() || item.productId.trim();
+    const meta = metaByCode.get(code);
+    if (!meta) return item;
+
+    const imageUrl = item.product.imageUrl ?? meta.imageUrl;
+    const name = meta.name || item.product.name;
+    const price = meta.price ?? item.product.price;
+    if (
+      imageUrl === item.product.imageUrl &&
+      name === item.product.name &&
+      price === item.product.price
+    ) {
+      return item;
+    }
+
+    changed = true;
+    return {
+      ...item,
+      product: {
+        ...item.product,
+        imageUrl,
+        name,
+        price,
+      },
+    };
+  });
+
+  return changed ? next : cart;
 }
 
 function mapCartToOrderPatch(cart: CartItem[]): { code: string; quantity: number }[] {
@@ -128,6 +171,18 @@ function serializeCartLines(cart: CartItem[]): string {
   return JSON.stringify(mapCartToOrderPatch(cart));
 }
 
+function clearDirtyIfCartMatchesOrder(
+  dirtyRef: { current: boolean },
+  order: OrderEntity,
+  cart: CartItem[]
+): void {
+  const serverLines = serializeCartLines(mapOrderLinesToCart(order.products));
+  const localLines = serializeCartLines(cart);
+  if (localLines === serverLines) {
+    dirtyRef.current = false;
+  }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>(() => loadCart());
@@ -135,6 +190,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [storeId, setStoreIdState] = useState<string>(() => loadStoreId());
   const syncingFromServerRef = useRef(false);
   const userCartDirtyRef = useRef(false);
+  const syncDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncInFlightRef = useRef<null | Promise<FlushCartSyncResult>>(null);
   const cartRef = useRef(cart);
   const orderIdRef = useRef(orderId);
@@ -237,6 +293,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const currentLines = serializeCartLines(cartRef.current);
       if (nextLines !== currentLines) {
         replaceFromOrderLines(result.data.order.products);
+      } else {
+        setCart((prev) => enrichCartFromOrderLines(prev, result.data.order.products));
       }
 
       return {
@@ -282,7 +340,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const flushCartSync = useCallback(async (): Promise<FlushCartSyncResult> => {
-    return executeSyncCycle(false);
+    if (syncDebounceRef.current) {
+      clearTimeout(syncDebounceRef.current);
+      syncDebounceRef.current = null;
+    }
+
+    const result = await executeSyncCycle(false);
+    if (result.ok && result.order) {
+      clearDirtyIfCartMatchesOrder(userCartDirtyRef, result.order, cartRef.current);
+    }
+    return result;
   }, [executeSyncCycle]);
 
   useEffect(() => {
@@ -312,12 +379,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (syncingFromServerRef.current) return;
     if (!userCartDirtyRef.current) return;
 
-    void executeSyncCycle(true).then((result) => {
-      if (result.ok) {
-        userCartDirtyRef.current = false;
+    if (syncDebounceRef.current) {
+      clearTimeout(syncDebounceRef.current);
+    }
+
+    syncDebounceRef.current = setTimeout(() => {
+      syncDebounceRef.current = null;
+      if (!userCartDirtyRef.current) return;
+      if (syncingFromServerRef.current) return;
+
+      void executeSyncCycle(true).then((result) => {
+        if (result.ok && result.order) {
+          clearDirtyIfCartMatchesOrder(userCartDirtyRef, result.order, cartRef.current);
+        }
+      });
+    }, CART_SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (syncDebounceRef.current) {
+        clearTimeout(syncDebounceRef.current);
+        syncDebounceRef.current = null;
       }
-    });
+    };
   }, [cart, executeSyncCycle, orderId, storeId, user?.type]);
+
+  useEffect(() => {
+    return () => {
+      if (syncDebounceRef.current) {
+        clearTimeout(syncDebounceRef.current);
+      }
+    };
+  }, []);
 
   const cartSubtotal = useMemo(
     () => cart.reduce((sum, i) => sum + i.product.price * i.quantity, 0),
@@ -342,10 +434,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ...product,
         code: product.code?.trim() || productKey,
         id: productKey,
+        imageUrl: product.imageUrl ?? undefined,
       };
       const existing = prev.find((i) => i.productId === productKey);
       const mergedProduct: CartProduct = existing
-        ? { ...existing.product, ...normalizedProduct, id: productKey }
+        ? {
+            ...existing.product,
+            ...normalizedProduct,
+            id: productKey,
+            imageUrl: normalizedProduct.imageUrl ?? existing.product.imageUrl,
+          }
         : normalizedProduct;
 
       const cap = getMaxOrderQuantity(mergedProduct);

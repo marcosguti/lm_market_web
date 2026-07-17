@@ -2,10 +2,11 @@ import { Alert, Button, Form, Input } from 'antd';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
+import type { EmailVerificationLocationState } from '../../types/emailVerification';
+
 import SEO from '../../components/SEO';
 import VerifyEmailLoginModal from '../../components/VerifyEmailLoginModal';
 import { useAuth } from '../../context/AuthContext';
-import type { EmailVerificationLocationState } from '../../types/emailVerification';
 
 const Login = () => {
   const navigate = useNavigate();

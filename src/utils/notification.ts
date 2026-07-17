@@ -1,5 +1,5 @@
-import { formatOrderStatusChangeMessage, formatOrderStatusLabel } from './orderStatus';
 import { formatShortOrderId } from './orderId';
+import { formatOrderStatusChangeMessage, formatOrderStatusLabel } from './orderStatus';
 
 export function formatNotificationTitle(title: string, orderId: null | string): string {
   if (!orderId) {
@@ -27,7 +27,7 @@ export function formatNotificationBody(
   }
 
   return body.replace(
-    /\b(pending|paymentConfirmed|preparing|readyForDelivery|outForDelivery|delivered|cancelled)\b/g,
+    /\b(pending|paymentPendingConfirmation|paymentConfirmed|preparing|readyForDelivery|assignedToDeliveryDriver|delivering|delivered|cancelled)\b/g,
     (status) => formatOrderStatusLabel(status)
   );
 }
