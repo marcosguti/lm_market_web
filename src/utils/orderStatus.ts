@@ -30,6 +30,9 @@ const CANCELLABLE_STATUSES: OrderStatus[] = [
   'paymentPendingConfirmation',
   'paymentConfirmed',
   'preparing',
+  'readyForDelivery',
+  'assignedToDeliveryDriver',
+  'delivering',
 ];
 
 export function canCancelOrder(status: OrderStatus): boolean {

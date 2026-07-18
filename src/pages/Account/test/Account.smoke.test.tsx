@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,6 +27,7 @@ describe('Account page smoke', () => {
       },
       isLoading: false,
       changePassword: vi.fn(),
+      setUser: vi.fn(),
       updateProfile: vi.fn(),
     });
   });
@@ -38,5 +39,15 @@ describe('Account page smoke', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByText('Mi cuenta')).toBeInTheDocument();
+  });
+
+  it('shows map address configuration section', async () => {
+    render(
+      <MemoryRouter>
+        <Account />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Dirección de entrega')).toBeInTheDocument();
+    expect(screen.getByText(/Configurar dirección en mapa/i)).toBeInTheDocument();
   });
 });

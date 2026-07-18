@@ -7,13 +7,16 @@ import { getKitchenOrders, verifyPayment } from '../../../api/orders';
 
 vi.mock('../../../api/orders', () => ({
   assignDelivery: vi.fn(),
+  getAdminOrderTracking: vi.fn(),
   getKitchenOrders: vi.fn(),
   getOrderStatusHistory: vi.fn().mockResolvedValue({ ok: true, data: { history: [] } }),
-  markDelivered: vi.fn(),
   patchAdminOrderStatus: vi.fn(),
-  startDelivery: vi.fn(),
   unassignDelivery: vi.fn(),
   verifyPayment: vi.fn(),
+}));
+
+vi.mock('../../../components/LiveDeliveryMap', () => ({
+  LiveDeliveryMap: () => null,
 }));
 
 vi.mock('../../../api/adminUsers', () => ({

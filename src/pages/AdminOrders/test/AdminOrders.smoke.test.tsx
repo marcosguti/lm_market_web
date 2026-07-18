@@ -7,16 +7,19 @@ import { ORDER_STATUS_FLOW, ORDER_STATUS_LABELS } from '../../../utils/orderStat
 
 vi.mock('../../../api/orders', () => ({
   assignDelivery: vi.fn(),
+  getAdminOrderTracking: vi.fn(),
   getKitchenOrders: vi.fn().mockResolvedValue({
     ok: true,
     data: { data: [], page: 1, pageSize: 20, total: 0, totalPages: 1 },
   }),
   getOrderStatusHistory: vi.fn().mockResolvedValue({ ok: true, data: { history: [] } }),
-  markDelivered: vi.fn(),
   patchAdminOrderStatus: vi.fn(),
-  startDelivery: vi.fn(),
   unassignDelivery: vi.fn(),
   verifyPayment: vi.fn(),
+}));
+
+vi.mock('../../../components/LiveDeliveryMap', () => ({
+  LiveDeliveryMap: () => null,
 }));
 
 vi.mock('../../../api/adminUsers', () => ({

@@ -4,6 +4,7 @@ import * as client from '../client';
 import {
   confirmOrderPayment,
   ensureCart,
+  getAdminOrderTracking,
   getDeliveryMine,
   getKitchenOrders,
   getOrder,
@@ -27,6 +28,8 @@ describe('orders api', () => {
     const screenshot = new File(['x'], 'proof.png', { type: 'image/png' });
     await confirmOrderPayment('order-1', {
       deliveryAddress: 'Calle 123',
+      deliveryLatitude: 10.48,
+      deliveryLongitude: -66.9,
       method: 'zelle',
       reference: 'REF1',
       paidAt: '2026-01-01T12:00:00.000Z',
@@ -39,6 +42,8 @@ describe('orders api', () => {
     const formData = options?.body as FormData;
     expect(formData.get('method')).toBe('zelle');
     expect(formData.get('deliveryAddress')).toBe('Calle 123');
+    expect(formData.get('deliveryLatitude')).toBe('10.48');
+    expect(formData.get('deliveryLongitude')).toBe('-66.9');
     expect(formData.get('reference')).toBe('REF1');
     expect(formData.get('paidAt')).toBe('2026-01-01T12:00:00.000Z');
     expect(formData.get('screenshot')).toBe(screenshot);
@@ -130,5 +135,25 @@ describe('orders api', () => {
     expect(client.api).toHaveBeenCalledWith('/api/delivery/orders/mine', {
       params: { page: '1', pageSize: '20' },
     });
+  });
+
+  it('confirmOrderPayment omits coordinates when not provided', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
+    await confirmOrderPayment('order-1', {
+      deliveryAddress: 'Calle 123',
+      method: 'cash',
+    });
+
+    const [, options] = vi.mocked(client.api).mock.calls[0];
+    const formData = options?.body as FormData;
+    expect(formData.get('deliveryAddress')).toBe('Calle 123');
+    expect(formData.get('deliveryLatitude')).toBeNull();
+    expect(formData.get('deliveryLongitude')).toBeNull();
+  });
+
+  it('getAdminOrderTracking calls admin tracking endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { tracking: {} } });
+    await getAdminOrderTracking('order-1');
+    expect(client.api).toHaveBeenCalledWith('/api/admin/orders/order-1/tracking');
   });
 });

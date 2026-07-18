@@ -12,6 +12,9 @@ const GlobalStyles = () => {
         input {
           box-shadow: none !important;
         }
+        textarea {
+          resize: none !important;
+        }
         h1,
         .h1 {
           font-size: 36px;

@@ -4,6 +4,7 @@ import type {
   OrderStatus,
   OrderStatusHistoryEntry,
 } from '../types/order';
+import type { OrderTrackingSnapshot } from '../types/tracking';
 
 import { api } from './client';
 
@@ -49,7 +50,10 @@ export async function patchOrderLines(
 
 export interface ConfirmPaymentParams {
   deliveryAddress: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   method: 'cash' | 'zelle' | 'mobilePayment' | 'binance';
+  note?: string;
   reference?: string;
   paidAt?: string;
   screenshot?: File;
@@ -59,6 +63,11 @@ export async function confirmOrderPayment(orderId: string, params: ConfirmPaymen
   const formData = new FormData();
   formData.append('method', params.method);
   formData.append('deliveryAddress', params.deliveryAddress);
+  if (params.deliveryLatitude != null && params.deliveryLongitude != null) {
+    formData.append('deliveryLatitude', String(params.deliveryLatitude));
+    formData.append('deliveryLongitude', String(params.deliveryLongitude));
+  }
+  if (params.note) formData.append('note', params.note);
   if (params.reference) formData.append('reference', params.reference);
   if (params.paidAt) formData.append('paidAt', params.paidAt);
   if (params.screenshot) formData.append('screenshot', params.screenshot);
@@ -171,4 +180,8 @@ export async function markDelivered(orderId: string, deliveryProof: File) {
 
 export async function getOrderStatusHistory(orderId: string) {
   return api<{ history: OrderStatusHistoryEntry[] }>(`/api/admin/orders/${orderId}/status-history`);
+}
+
+export async function getAdminOrderTracking(orderId: string) {
+  return api<{ tracking: OrderTrackingSnapshot }>(`/api/admin/orders/${orderId}/tracking`);
 }

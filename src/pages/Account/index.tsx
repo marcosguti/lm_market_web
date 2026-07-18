@@ -1,16 +1,24 @@
-import { Alert, Button, Form, Input, Tag } from 'antd';
+import { Alert, Button, Form, Input, Select, Tag } from 'antd';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { AddressMapPicker } from '../../components/AddressMapPicker';
 import PhoneInput from '../../components/PhoneInput';
 import SEO from '../../components/SEO';
 import { useAuth } from '../../context/AuthContext';
+import {
+  DELIVERY_CITY_LABELS,
+  DELIVERY_CITY_SLUGS,
+  type DeliveryCitySlug,
+  isDeliveryCitySlug,
+} from '../../utils/deliveryCities';
 import { isValidPhone } from '../../utils/phone';
 
 const Account = () => {
-  const { user, updateProfile, changePassword } = useAuth();
+  const { user, setUser, updateProfile, changePassword } = useAuth();
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [accountCity, setAccountCity] = useState<DeliveryCitySlug>('merida');
   const [profileForm] = Form.useForm<{
-    address: string;
     firstName: string;
     lastName: string;
     phone: string;
@@ -30,7 +38,6 @@ const Account = () => {
   useEffect(() => {
     if (user) {
       profileForm.setFieldsValue({
-        address: user.address ?? '',
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone ?? '',
@@ -45,7 +52,6 @@ const Account = () => {
     if (!values) return;
     setProfileSaving(true);
     const result = await updateProfile({
-      address: values.address || undefined,
       firstName: values.firstName,
       lastName: values.lastName,
       phone: values.phone || undefined,
@@ -141,15 +147,70 @@ const Account = () => {
                 {user.phoneVerified ? 'Verificado' : 'No verificado'}
               </Tag>
             </Form.Item>
-            <Form.Item label="Dirección" name="address">
-              <Input />
-            </Form.Item>
             <Form.Item>
               <Button htmlType="submit" loading={profileSaving} type="primary">
                 Guardar cambios
               </Button>
             </Form.Item>
           </Form>
+          <div className="mt-[24px]">
+            <h3 className="mb-[12px] text-lg font-medium text-gray-800">Dirección de entrega</h3>
+            {user.address ? (
+              <Alert
+                className="mb-[12px]"
+                type="info"
+                showIcon
+                message={user.address}
+                description={
+                  isDeliveryCitySlug(user.addressCity)
+                    ? `Ciudad: ${DELIVERY_CITY_LABELS[user.addressCity]}`
+                    : undefined
+                }
+              />
+            ) : (
+              <Alert
+                className="mb-[12px]"
+                type="warning"
+                showIcon
+                message="Aún no tienes una dirección configurada en el mapa."
+              />
+            )}
+            {!editingAddress ? (
+              <Button
+                type="default"
+                onClick={() => {
+                  if (isDeliveryCitySlug(user.addressCity)) {
+                    setAccountCity(user.addressCity);
+                  }
+                  setEditingAddress(true);
+                }}
+              >
+                {user.address ? 'Cambiar dirección en mapa' : 'Configurar dirección en mapa'}
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <Select
+                  className="w-full"
+                  value={accountCity}
+                  onChange={(value: DeliveryCitySlug) => setAccountCity(value)}
+                  options={DELIVERY_CITY_SLUGS.map((slug) => ({
+                    label: DELIVERY_CITY_LABELS[slug],
+                    value: slug,
+                  }))}
+                />
+                <AddressMapPicker
+                  expectedCity={accountCity}
+                  initialLat={user.addressLatitude}
+                  initialLng={user.addressLongitude}
+                  onSaved={(nextUser) => {
+                    setUser({ ...user, ...nextUser });
+                    setEditingAddress(false);
+                  }}
+                />
+                <Button onClick={() => setEditingAddress(false)}>Cancelar</Button>
+              </div>
+            )}
+          </div>
         </section>
         <section>
           <h2 className="mb-[16px] text-xl font-semibold text-gray-800">Cambiar contraseña</h2>

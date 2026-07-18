@@ -16,12 +16,14 @@ describe('canCancelOrder', () => {
     expect(canCancelOrder('paymentPendingConfirmation')).toBe(true);
     expect(canCancelOrder('paymentConfirmed')).toBe(true);
     expect(canCancelOrder('preparing')).toBe(true);
+    expect(canCancelOrder('readyForDelivery')).toBe(true);
+    expect(canCancelOrder('assignedToDeliveryDriver')).toBe(true);
+    expect(canCancelOrder('delivering')).toBe(true);
   });
 
   it('denies non-cancellable statuses', () => {
     expect(canCancelOrder('delivered')).toBe(false);
-    expect(canCancelOrder('delivering')).toBe(false);
-    expect(canCancelOrder('assignedToDeliveryDriver')).toBe(false);
+    expect(canCancelOrder('cancelled' as OrderStatus)).toBe(false);
   });
 });
 

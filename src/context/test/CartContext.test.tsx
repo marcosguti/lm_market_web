@@ -65,7 +65,9 @@ describe('CartContext', () => {
     localStorage.setItem('lm_market_store', 'store-1');
     vi.clearAllMocks();
 
-    vi.mocked(getStores).mockResolvedValue([{ id: 'store-1', name: 'Main' }]);
+    vi.mocked(getStores).mockResolvedValue([
+      { externalBranchCode: '1', id: 'store-1', name: 'Main' },
+    ]);
     vi.mocked(ensureCart).mockResolvedValue({
       ok: true,
       data: {
@@ -295,6 +297,29 @@ describe('CartContext', () => {
       [{ code: 'SKU1', quantity: 2 }],
       'store-1'
     );
+  });
+
+  it('replaces persisted storeId when it is no longer in active stores', async () => {
+    localStorage.setItem('lm_market_store', 'inactive-store');
+    vi.mocked(getStores).mockResolvedValue([
+      { externalBranchCode: '2', id: 'store-2', name: 'Active' },
+    ]);
+
+    function StoreProbe() {
+      const { storeId } = useCart();
+      return <span data-testid="store-id">{storeId}</span>;
+    }
+
+    render(
+      <CartProvider>
+        <StoreProbe />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('store-id')).toHaveTextContent('store-2');
+    });
+    expect(localStorage.getItem('lm_market_store')).toBe('store-2');
   });
 });
 

@@ -1,8 +1,17 @@
+import type { PaymentMethod } from '../types/order';
+
 import { api } from './client';
 
 export interface VenezuelanBank {
   code: string;
   name: string;
+}
+
+export interface PaymentMethodPublicConfig {
+  information: null | string;
+  method: PaymentMethod;
+  noteEnabled: boolean;
+  placeholder: null | string;
 }
 
 export interface PaymentConfig {
@@ -13,6 +22,7 @@ export interface PaymentConfig {
     phone: string;
     rif: string;
   };
+  methods?: PaymentMethodPublicConfig[];
   usdRate: number;
   usdRateSource?: string;
   usdRateUpdatedAt?: null | string;
@@ -30,6 +40,8 @@ export interface VerifyMobilePaymentParams {
   amount: number;
   bankCode: string;
   deliveryAddress: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   nationalId: string;
   phone: string;
   reference: string;

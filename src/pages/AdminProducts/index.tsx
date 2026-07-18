@@ -68,7 +68,16 @@ const AdminProducts = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await getAdminProducts(page, pageSize, search || undefined, sort, activeFilter, undefined, undefined, selectedStoreId || undefined);
+    const res = await getAdminProducts(
+      page,
+      pageSize,
+      search || undefined,
+      sort,
+      activeFilter,
+      undefined,
+      undefined,
+      selectedStoreId || undefined
+    );
     setLoading(false);
     if (!res.ok || !res.data?.data) {
       void message.error((res.data as { error?: string })?.error ?? 'Error al cargar productos');
@@ -82,7 +91,10 @@ const AdminProducts = () => {
     void (async () => {
       const s = await getStores();
       setStores(s);
-      if (s.length > 0) setSelectedStoreId(s[0].id);
+      setSelectedStoreId((prev) => {
+        if (prev && s.some((store) => store.id === prev)) return prev;
+        return '';
+      });
     })();
   }, []);
 
@@ -280,7 +292,10 @@ const AdminProducts = () => {
           />
           <Select
             allowClear
-            options={[{ label: 'Todas', value: '' }, ...stores.map((s) => ({ label: s.name, value: s.id }))]}
+            options={[
+              { label: 'Todas', value: '' },
+              ...stores.map((s) => ({ label: s.name, value: s.id })),
+            ]}
             placeholder="Tienda"
             style={{ width: 160 }}
             value={selectedStoreId || undefined}
@@ -353,7 +368,11 @@ const AdminProducts = () => {
                       <Form.Item label="Marca" name="brand" rules={[{ required: true }]}>
                         <Input />
                       </Form.Item>
-                      <Form.Item label="Departamento" name="department" rules={[{ required: true }]}>
+                      <Form.Item
+                        label="Departamento"
+                        name="department"
+                        rules={[{ required: true }]}
+                      >
                         <Input />
                       </Form.Item>
                     </div>
@@ -423,12 +442,24 @@ const AdminProducts = () => {
                               key={field.key}
                               className="mb-4 grid grid-cols-3 items-end gap-3 rounded-lg border border-gray-100 p-3"
                             >
-                              <div className="col-span-1 font-medium text-gray-700">{storeName}</div>
+                              <div className="col-span-1 font-medium text-gray-700">
+                                {storeName}
+                              </div>
                               <Form.Item name={[field.name, 'price']} className="mb-0">
-                                <InputNumber className="w-full" min={0} precision={2} placeholder="Precio (Bs)" />
+                                <InputNumber
+                                  className="w-full"
+                                  min={0}
+                                  precision={2}
+                                  placeholder="Precio (Bs)"
+                                />
                               </Form.Item>
                               <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
-                                <InputNumber className="w-full" min={0} precision={0} placeholder="Existencias" />
+                                <InputNumber
+                                  className="w-full"
+                                  min={0}
+                                  precision={0}
+                                  placeholder="Existencias"
+                                />
                               </Form.Item>
                             </div>
                           );
@@ -538,10 +569,20 @@ const AdminProducts = () => {
                               {stores[field.name]?.name ?? `Tienda ${field.name + 1}`}
                             </div>
                             <Form.Item name={[field.name, 'price']} className="mb-0">
-                              <InputNumber className="w-full" min={0} precision={2} placeholder="Precio (Bs)" />
+                              <InputNumber
+                                className="w-full"
+                                min={0}
+                                precision={2}
+                                placeholder="Precio (Bs)"
+                              />
                             </Form.Item>
                             <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
-                              <InputNumber className="w-full" min={0} precision={0} placeholder="Existencias" />
+                              <InputNumber
+                                className="w-full"
+                                min={0}
+                                precision={0}
+                                placeholder="Existencias"
+                              />
                             </Form.Item>
                           </div>
                         ))

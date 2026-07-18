@@ -79,13 +79,14 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('home-redirect')).toBeInTheDocument();
   });
 
-  it('allows deliveryDriver on delivery route', () => {
+  it('redirects deliveryDriver away from client-only route', () => {
     useAuthMock.mockReturnValue({
       user: { type: 'deliveryDriver' },
       isLoading: false,
     });
-    renderRoute(['deliveryDriver']);
-    expect(screen.getByText('Protected content')).toBeInTheDocument();
+    renderRoute(['client']);
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+    expect(screen.getByText('home-redirect')).toBeInTheDocument();
   });
 
   it('allows any authenticated user when allowedTypes is omitted', () => {

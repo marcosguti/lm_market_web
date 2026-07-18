@@ -13,4 +13,4 @@ Cada vez que agregues o modifiques código en este repo (`src/**`):
 3. **No dejes tests rotos** — corrige o actualiza tests afectados en el mismo cambio.
 4. **Vistas por rol** — si cambias rutas en `App.tsx`, `ProtectedRoute` o menú del `Header`, actualiza tests RBAC de vistas.
 5. **CI** — el PR no debe mergearse si `npm run lint && npm run test` falla.
-6. **ESLint + perfectionist** — al terminar de resolver el prompt, ejecuta `npx eslint --fix .` para aplicar autofix de ESLint y `eslint-plugin-perfectionist`. Si queda algún error no auto-fixable, corrígelo en el mismo cambio.
+6. **ESLint + perfectionist (obligatorio al cerrar)** — **antes** de dar por terminado cualquier cambio en `src/**`, ejecuta `npx eslint --fix .` y verifica que salga limpio (0 errors). Eso autofixa `perfectionist/sort-modules`, `sort-imports`, `sort-named-imports`, etc. Si `--fix` no alcanza, corrige a mano en el mismo cambio. **No dejes el build/dev fallando por orden de exports, imports o tipos.**

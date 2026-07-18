@@ -8,24 +8,28 @@ vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
-vi.mock('../../../context/CartContext', () => ({
-  useCart: () => ({
-    cart: [{ product: { code: 'SKU1', name: 'P', price: 1, available: 1 }, quantity: 1 }],
-    cartSubtotal: 1,
-    clearCart: vi.fn(),
-    flushCartSync: vi.fn().mockResolvedValue({ ok: true, order: { id: 'o1' } }),
-    removeFromCart: vi.fn(),
-    replaceFromOrderLines: vi.fn(),
-    totalItemCount: 1,
-    updateQuantity: vi.fn(),
-  }),
-}));
-
 vi.mock('../../../api/payments', () => ({
   getPaymentBanks: vi.fn().mockResolvedValue({ ok: true, data: { banks: [] } }),
   getPaymentConfig: vi.fn().mockResolvedValue({
     ok: true,
-    data: { megasoftEnabled: false, usdRate: 40 },
+    data: {
+      megasoftEnabled: false,
+      methods: [
+        {
+          information: null,
+          method: 'cash',
+          noteEnabled: true,
+          placeholder: 'Toma una foto legible del billete',
+        },
+        {
+          information: null,
+          method: 'zelle',
+          noteEnabled: true,
+          placeholder: null,
+        },
+      ],
+      usdRate: 40,
+    },
   }),
   verifyMobilePayment: vi.fn(),
 }));
@@ -41,9 +45,47 @@ vi.mock('../../../api/orders', () => ({
         products: [],
         totalAmount: 10,
         userId: 'u1',
+        storeId: 's1',
       },
       changes: [],
     },
+  }),
+}));
+
+vi.mock('../../../api/stores', () => ({
+  getStores: vi.fn().mockResolvedValue([
+    {
+      id: 's1',
+      name: 'Las Americas',
+      externalBranchCode: '1',
+      city: 'merida',
+      latitude: 8.598136,
+      longitude: -71.150426,
+    },
+  ]),
+}));
+
+vi.mock('../../../context/CartContext', () => ({
+  useCart: () => ({
+    cart: [{ product: { code: 'SKU1', name: 'P', price: 1, available: 1 }, quantity: 1 }],
+    cartSubtotal: 1,
+    clearCart: vi.fn(),
+    flushCartSync: vi.fn().mockResolvedValue({
+      ok: true,
+      order: {
+        id: 'o1',
+        status: 'pending',
+        products: [{ code: 'SKU1', name: 'P', quantity: 1, lineTotal: 1, unitPrice: 1 }],
+        totalAmount: 10,
+        userId: 'u1',
+        storeId: 's1',
+      },
+      changes: [],
+    }),
+    removeFromCart: vi.fn(),
+    replaceFromOrderLines: vi.fn(),
+    totalItemCount: 1,
+    updateQuantity: vi.fn(),
   }),
 }));
 
@@ -54,6 +96,7 @@ describe('Checkout page smoke', () => {
     useAuthMock.mockReturnValue({
       user: { type: 'client', firstName: 'Ana', lastName: 'Client', email: 'a@test.com' },
       isLoading: false,
+      setUser: vi.fn(),
     });
   });
 
@@ -87,20 +130,19 @@ describe('Checkout page smoke', () => {
     );
     await waitFor(() => {
       expect(screen.getByText('Comprobante de pago')).toBeInTheDocument();
-      expect(
-        screen.getByText(/Obligatorio\. Un administrador revisará el comprobante\./i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Toma una foto legible del billete/i)).toBeInTheDocument();
     });
   });
 
-  it('limits delivery address to 500 characters', async () => {
+  it('prompts to configure map address when missing', async () => {
     render(
       <MemoryRouter>
         <CheckoutPage />
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Calle 123/i)).toHaveAttribute('maxlength', '500');
+      expect(screen.getByText('Dirección de entrega')).toBeInTheDocument();
+      expect(screen.getByText(/Elige una nueva dirección/i)).toBeInTheDocument();
     });
   });
 });

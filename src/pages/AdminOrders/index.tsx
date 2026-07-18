@@ -1,12 +1,11 @@
-import type { UploadFile } from 'antd/es/upload/interface';
+import type { ReactNode } from 'react';
 
 import {
   CarOutlined,
-  CheckOutlined,
   CloseOutlined,
   CreditCardOutlined,
+  EnvironmentOutlined,
   EyeOutlined,
-  PlayCircleOutlined,
   UndoOutlined,
   UnorderedListOutlined,
   UserAddOutlined,
@@ -24,23 +23,22 @@ import {
   Tag,
   Tooltip,
   Typography,
-  Upload,
 } from 'antd';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { OrderEntity, OrderStatus } from '../../types/order';
 
 import { type AdminUser, getAdminUsers } from '../../api/adminUsers';
 import {
   assignDelivery,
+  getAdminOrderTracking,
   getKitchenOrders,
-  markDelivered,
   patchAdminOrderStatus,
-  startDelivery,
   unassignDelivery,
   verifyPayment,
 } from '../../api/orders';
 import { getStores, type Store } from '../../api/stores';
+import { LiveDeliveryMap } from '../../components/LiveDeliveryMap';
 import { OrderProductsModal } from '../../components/OrderProductsModal';
 import { OrderStatusHistoryModal } from '../../components/OrderStatusHistoryModal';
 import { ShortOrderId } from '../../components/ShortOrderId';
@@ -138,17 +136,15 @@ const AdminOrdersPage = () => {
     order: OrderEntity | null;
   }>({ open: false, order: null });
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  const [deliverModal, setDeliverModal] = useState<{
+  const [trackingModal, setTrackingModal] = useState<{
     open: boolean;
-    order: OrderEntity | null;
-  }>({ open: false, order: null });
+    orderId: null | string;
+  }>({ open: false, orderId: null });
   const [cancelModal, setCancelModal] = useState<{
     open: boolean;
     order: OrderEntity | null;
   }>({ open: false, order: null });
   const [cancellationReason, setCancellationReason] = useState('');
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const token = localStorage.getItem('lm_market_token');
@@ -203,6 +199,11 @@ const AdminOrdersPage = () => {
     void (async () => {
       const loadedStores = await getStores();
       setStores(loadedStores);
+      setStoreFilter((prev) => {
+        if (prev === ALL_FILTER) return prev;
+        if (loadedStores.some((store) => store.id === prev)) return prev;
+        return ALL_FILTER;
+      });
       const usersRes = await getAdminUsers(1, 100);
       if (usersRes.ok && usersRes.data?.data) {
         setDrivers(usersRes.data.data.filter((user) => user.type === 'deliveryDriver'));
@@ -323,39 +324,6 @@ const AdminOrdersPage = () => {
     });
   };
 
-  const handleStart = async (orderId: string) => {
-    const result = await startDelivery(orderId);
-    if (!result.ok) {
-      void message.error(
-        (result.data as { error?: string })?.error ?? 'No se pudo iniciar el reparto'
-      );
-      return;
-    }
-    void message.success('Reparto iniciado');
-    void reload();
-  };
-
-  const handleDeliver = async () => {
-    if (!deliverModal.order || !proofFile) {
-      void message.error('Debes seleccionar una foto de entrega');
-      return;
-    }
-    setSubmitting(true);
-    const result = await markDelivered(deliverModal.order.id, proofFile);
-    setSubmitting(false);
-    if (!result.ok) {
-      void message.error(
-        (result.data as { error?: string })?.error ?? 'No se pudo marcar entregada'
-      );
-      return;
-    }
-    void message.success('Orden entregada');
-    setDeliverModal({ open: false, order: null });
-    setProofFile(null);
-    setFileList([]);
-    void reload();
-  };
-
   const handleVerifyPayment = async (orderId: string) => {
     setVerifying(true);
     const result = await verifyPayment(orderId, true);
@@ -474,6 +442,15 @@ const AdminOrdersPage = () => {
                         <CarOutlined
                           className="cursor-pointer text-gray-500"
                           aria-label={`Repartidor: ${row.deliveryUserName}`}
+                          onClick={() => {
+                            if (
+                              status === 'delivering' &&
+                              row.deliveryLatitude != null &&
+                              row.deliveryLongitude != null
+                            ) {
+                              setTrackingModal({ open: true, orderId: row.id });
+                            }
+                          }}
                         />
                       </Tooltip>
                     ) : null}
@@ -590,40 +567,27 @@ const AdminOrdersPage = () => {
                       </Tooltip>
                     ) : null}
                     {row.status === 'assignedToDeliveryDriver' ? (
-                      <>
-                        <Tooltip title="Iniciar reparto">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<PlayCircleOutlined />}
-                            aria-label="Iniciar reparto"
-                            onClick={() => void handleStart(row.id)}
-                          />
-                        </Tooltip>
-                        <Tooltip title="Rechazar asignación">
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<UndoOutlined />}
-                            aria-label="Rechazar asignación"
-                            onClick={() => handleUnassign(row)}
-                          />
-                        </Tooltip>
-                      </>
-                    ) : null}
-                    {row.status === 'delivering' ? (
-                      <Tooltip title="Marcar entregada">
+                      <Tooltip title="Rechazar asignación">
                         <Button
                           type="text"
                           size="small"
-                          icon={<CheckOutlined />}
-                          aria-label="Marcar entregada"
-                          onClick={() => {
-                            setProofFile(null);
-                            setFileList([]);
-                            setDeliverModal({ open: true, order: row });
-                          }}
+                          danger
+                          icon={<UndoOutlined />}
+                          aria-label="Rechazar asignación"
+                          onClick={() => handleUnassign(row)}
+                        />
+                      </Tooltip>
+                    ) : null}
+                    {row.status === 'delivering' &&
+                    row.deliveryLatitude != null &&
+                    row.deliveryLongitude != null ? (
+                      <Tooltip title="Seguimiento en vivo">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EnvironmentOutlined />}
+                          aria-label="Seguimiento en vivo"
+                          onClick={() => setTrackingModal({ open: true, orderId: row.id })}
                         />
                       </Tooltip>
                     ) : null}
@@ -725,38 +689,13 @@ const AdminOrdersPage = () => {
         />
       </Modal>
 
-      <Modal
-        title="Foto de entrega"
-        open={deliverModal.open}
-        onCancel={() => setDeliverModal({ open: false, order: null })}
-        onOk={() => void handleDeliver()}
-        okText="Confirmar entrega"
-        confirmLoading={submitting}
-        okButtonProps={{ disabled: !proofFile }}
-      >
-        <Upload
-          accept="image/jpeg,image/png,image/webp"
-          beforeUpload={(file) => {
-            setProofFile(file);
-            setFileList([
-              {
-                uid: file.uid,
-                name: file.name,
-                status: 'done',
-              },
-            ]);
-            return false;
-          }}
-          fileList={fileList}
-          maxCount={1}
-          onRemove={() => {
-            setProofFile(null);
-            setFileList([]);
-          }}
-        >
-          <Button>Seleccionar foto</Button>
-        </Upload>
-      </Modal>
+      <LiveDeliveryMap
+        role="admin"
+        orderId={trackingModal.orderId ?? ''}
+        open={trackingModal.open && Boolean(trackingModal.orderId)}
+        onClose={() => setTrackingModal({ open: false, orderId: null })}
+        fetchTracking={() => getAdminOrderTracking(trackingModal.orderId ?? '')}
+      />
 
       <Modal
         title="Detalles del pago"
@@ -790,6 +729,12 @@ const AdminOrdersPage = () => {
             </p>
             <p>
               <strong>Referencia:</strong> {paymentModal.order.paymentReference ?? '—'}
+            </p>
+            <p>
+              <strong>Nota:</strong>{' '}
+              {paymentModal.order.payment?.note?.trim()
+                ? paymentModal.order.payment.note
+                : '—'}
             </p>
             <p>
               <strong>Fecha de pago:</strong> {formatDateTime(paymentModal.order.paymentDate)}

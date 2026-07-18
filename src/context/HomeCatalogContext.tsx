@@ -39,15 +39,18 @@ export function HomeCatalogProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
 
       setStores(s);
-      if (s.length > 0) {
-        const persistedStoreId = cartStoreId;
-        const initial =
-          persistedStoreId && s.some((store) => store.id === persistedStoreId)
-            ? persistedStoreId
-            : s[0].id;
-        setSelectedStoreId(initial);
-        if (initial !== persistedStoreId) setStoreId(initial);
+      if (s.length === 0) {
+        setSelectedStoreId('');
+        setFiltersReady(true);
+        return;
       }
+      const persistedStoreId = cartStoreId;
+      const initial =
+        persistedStoreId && s.some((store) => store.id === persistedStoreId)
+          ? persistedStoreId
+          : s[0].id;
+      setSelectedStoreId(initial);
+      if (initial !== persistedStoreId) setStoreId(initial);
       setFiltersReady(true);
     })();
 
@@ -59,7 +62,9 @@ export function HomeCatalogProvider({ children }: { children: ReactNode }) {
   }, [setStoreId]);
 
   const scrollToCatalog = useCallback(() => {
-    document.getElementById('products-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document
+      .getElementById('products-catalog')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   const applyStoreChange = useCallback(

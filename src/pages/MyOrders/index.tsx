@@ -1,5 +1,5 @@
 import { EyeOutlined } from '@ant-design/icons';
-import { Alert, Button, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { OrderEntity } from '../../types/order';
@@ -153,14 +153,16 @@ const MyOrdersPage = () => {
             key: 'actions',
             width: 80,
             render: (_, row: OrderEntity) => (
-              <Tooltip title="Ver productos">
-                <Button
-                  type="text"
-                  icon={<EyeOutlined />}
-                  aria-label="Ver productos de la orden"
-                  onClick={() => setProductsModal({ open: true, order: row })}
-                />
-              </Tooltip>
+              <Space size={0}>
+                <Tooltip title="Ver productos">
+                  <Button
+                    type="text"
+                    icon={<EyeOutlined />}
+                    aria-label="Ver productos de la orden"
+                    onClick={() => setProductsModal({ open: true, order: row })}
+                  />
+                </Tooltip>
+              </Space>
             ),
           },
         ]}

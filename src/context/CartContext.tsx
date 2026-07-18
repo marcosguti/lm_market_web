@@ -215,9 +215,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     void (async () => {
-      if (loadStoreId()) return;
       const stores = await getStores();
-      if (cancelled || stores.length === 0) return;
+      if (cancelled) return;
+      const current = loadStoreId();
+      if (current && stores.some((store) => store.id === current)) return;
+      if (stores.length === 0) {
+        setStoreId('');
+        return;
+      }
       setStoreId(stores[0].id);
     })();
 

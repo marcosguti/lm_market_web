@@ -1,3 +1,5 @@
+export type { OrderTrackingSnapshot as DeliveryTrackingSnapshot } from './tracking';
+
 export type OrderStatus =
   | 'pending'
   | 'paymentPendingConfirmation'
@@ -43,6 +45,7 @@ export interface Payment {
   createdAt: string;
   id: string;
   method: PaymentMethod;
+  note?: null | string;
   paidAt: string;
   reference: string;
   screenshotUrl: string | null;
@@ -56,6 +59,8 @@ export interface OrderEntity {
   createdAt: string;
   customerNotes: null | string;
   deliveryAddress: null | string;
+  deliveryLatitude?: null | number;
+  deliveryLongitude?: null | number;
   deliveryPhone: null | string;
   deliveryProofUrl: null | string;
   cancellationReason: null | string;

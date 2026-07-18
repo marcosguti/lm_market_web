@@ -333,18 +333,18 @@ const Header = () => {
               </Link>
             ),
           },
-        ]
-      : []),
-    ...(user?.type === 'deliveryDriver'
-      ? [
-          {
-            key: 'reparto',
-            label: (
-              <Link className="no-underline hover:no-underline" to="/reparto">
-                Panel reparto
-              </Link>
-            ),
-          },
+          ...(user?.type === 'superAdmin'
+            ? [
+                {
+                  key: 'metodos-pago',
+                  label: (
+                    <Link className="no-underline hover:no-underline" to="/metodos-pago">
+                      Métodos de pago
+                    </Link>
+                  ),
+                },
+              ]
+            : []),
         ]
       : []),
     {

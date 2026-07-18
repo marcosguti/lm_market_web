@@ -116,7 +116,7 @@ describe('Header RBAC menu and cart', () => {
     });
   });
 
-  it('shows admin menu links for admin', async () => {
+  it('shows admin menu links for admin without payment methods', async () => {
     useAuthMock.mockReturnValue({
       user: { firstName: 'Admin', lastName: 'User', type: 'admin' },
       isLoading: false,
@@ -133,9 +133,10 @@ describe('Header RBAC menu and cart', () => {
       expect(screen.getAllByText('Usuarios').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('Productos').length).toBeGreaterThanOrEqual(1);
     });
+    expect(screen.queryByText('Métodos de pago')).not.toBeInTheDocument();
   });
 
-  it('shows admin menu links for superAdmin', async () => {
+  it('shows admin menu links and payment methods for superAdmin', async () => {
     useAuthMock.mockReturnValue({
       user: { firstName: 'Super', lastName: 'Admin', type: 'superAdmin' },
       isLoading: false,
@@ -150,23 +151,7 @@ describe('Header RBAC menu and cart', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Panel órdenes').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('Ofertas').length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it('shows delivery panel for deliveryDriver', async () => {
-    useAuthMock.mockReturnValue({
-      user: { firstName: 'Driver', lastName: 'User', type: 'deliveryDriver' },
-      isLoading: false,
-      logout: vi.fn(),
-    });
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>
-    );
-    openUserMenu();
-    await waitFor(() => {
-      expect(screen.getAllByText('Panel reparto').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Métodos de pago').length).toBeGreaterThanOrEqual(1);
     });
   });
 

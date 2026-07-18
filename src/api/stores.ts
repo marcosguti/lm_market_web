@@ -1,9 +1,13 @@
 import { api } from './client';
 
+/** Active stores only (API excludes inactive). */
 export type Store = {
-  id: string;
-  name: string;
+  city: null | string;
   externalBranchCode: string;
+  id: string;
+  latitude: null | number;
+  longitude: null | number;
+  name: string;
 };
 
 export async function getStores(): Promise<Store[]> {

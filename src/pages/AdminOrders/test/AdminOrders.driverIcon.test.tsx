@@ -6,11 +6,10 @@ import { getKitchenOrders } from '../../../api/orders';
 
 vi.mock('../../../api/orders', () => ({
   assignDelivery: vi.fn(),
+  getAdminOrderTracking: vi.fn(),
   getKitchenOrders: vi.fn(),
   getOrderStatusHistory: vi.fn().mockResolvedValue({ ok: true, data: { history: [] } }),
-  markDelivered: vi.fn(),
   patchAdminOrderStatus: vi.fn(),
-  startDelivery: vi.fn(),
   unassignDelivery: vi.fn(),
   verifyPayment: vi.fn(),
 }));
@@ -20,6 +19,10 @@ vi.mock('../../../api/adminUsers', () => ({
     ok: true,
     data: { data: [], page: 1, pageSize: 100, total: 0, totalPages: 1 },
   }),
+}));
+
+vi.mock('../../../components/LiveDeliveryMap', () => ({
+  LiveDeliveryMap: () => null,
 }));
 
 vi.mock('../../../api/stores', () => ({
@@ -50,6 +53,8 @@ describe('AdminOrders delivery driver icon', () => {
             storeName: 'Altochama',
             totalAmount: 10.6,
             deliveryAddress: 'campo claro urbanizacion calle 22, casa 118N al lado de la garita',
+            deliveryLatitude: 8.59,
+            deliveryLongitude: -71.15,
             deliveryPhone: '04141234567',
             customerNotes: null,
             confirmationCode: null,
@@ -81,21 +86,6 @@ describe('AdminOrders delivery driver icon', () => {
     });
   });
 
-  it('shows driver icon next to delivering status', async () => {
-    render(
-      <MemoryRouter>
-        <AdminOrdersPage />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('En Reparto')).toBeInTheDocument();
-      const icon = screen.getByLabelText('Repartidor: Jose Perez');
-      expect(icon).toBeInTheDocument();
-      expect(icon).toHaveClass('cursor-pointer');
-    });
-  });
-
   it('shows truncated delivery address and phone under it', async () => {
     render(
       <MemoryRouter>
@@ -110,5 +100,88 @@ describe('AdminOrders delivery driver icon', () => {
       expect(address).toHaveClass('truncate', 'cursor-pointer');
       expect(screen.getByText('04141234567')).toBeInTheDocument();
     });
+  });
+
+  it('shows driver icon next to delivering status', async () => {
+    render(
+      <MemoryRouter>
+        <AdminOrdersPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('En Reparto')).toBeInTheDocument();
+      const icon = screen.getByLabelText('Repartidor: Jose Perez');
+      expect(icon).toBeInTheDocument();
+    });
+  });
+
+  it('shows live tracking action only when delivering with destination GPS', async () => {
+    render(
+      <MemoryRouter>
+        <AdminOrdersPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Seguimiento en vivo')).toBeInTheDocument();
+    });
+  });
+
+  it('hides live tracking action when delivering without destination GPS', async () => {
+    vi.mocked(getKitchenOrders).mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: {
+        data: [
+          {
+            id: 'a5350180-1234-5678-9abc-def012345678',
+            status: 'delivering',
+            userNumberId: '17322319',
+            storeName: 'Altochama',
+            totalAmount: 10.6,
+            deliveryAddress: 'campo claro',
+            deliveryLatitude: null,
+            deliveryLongitude: null,
+            deliveryPhone: '04141234567',
+            customerNotes: null,
+            confirmationCode: null,
+            idempotencyKey: null,
+            paidAt: null,
+            createdAt: '2026-07-15T12:00:00.000Z',
+            updatedAt: '2026-07-15T12:00:00.000Z',
+            paymentMethod: null,
+            paymentReference: null,
+            paymentDate: null,
+            paymentScreenshotUrl: null,
+            deliveryProofUrl: null,
+            cancellationReason: null,
+            deliveryUserId: 'driver-1',
+            deliveryUserName: 'Jose Perez',
+            deliveryUserPhone: '04141234567',
+            storeId: null,
+            payment: null,
+            userId: 'u1',
+            version: 1,
+            products: [],
+          },
+        ],
+        page: 1,
+        pageSize: 100,
+        total: 1,
+        totalPages: 1,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <AdminOrdersPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('En Reparto')).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText('Seguimiento en vivo')).not.toBeInTheDocument();
   });
 });

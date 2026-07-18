@@ -34,6 +34,8 @@ describe('payments api', () => {
       amount: 10,
       bankCode: '0105',
       deliveryAddress: 'Calle 123',
+      deliveryLatitude: 10.48,
+      deliveryLongitude: -66.9,
       nationalId: 'V12345678',
       phone: '04141234567',
       reference: 'REF1',

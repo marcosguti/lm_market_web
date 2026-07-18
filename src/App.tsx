@@ -16,12 +16,12 @@ import AdminBanners from './pages/AdminBanners';
 import AdminBlogArticles from './pages/AdminBlogArticles';
 import AdminDeals from './pages/AdminDeals';
 import AdminOrdersPage from './pages/AdminOrders';
+import AdminPaymentMethods from './pages/AdminPaymentMethods';
 import AdminProducts from './pages/AdminProducts';
 import Blog from './pages/Blog';
 import BlogDetail from './pages/BlogDetail';
 import CheckoutPage from './pages/Checkout';
 import Contact from './pages/Contact';
-import DeliveryOrdersPage from './pages/DeliveryOrders';
 import FAQ from './pages/FAQ';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -150,10 +150,10 @@ function App() {
                     }
                   />
                   <Route
-                    path="/reparto"
+                    path="/metodos-pago"
                     element={
-                      <ProtectedRoute allowedTypes={['deliveryDriver']}>
-                        <DeliveryOrdersPage />
+                      <ProtectedRoute allowedTypes={['superAdmin']}>
+                        <AdminPaymentMethods />
                       </ProtectedRoute>
                     }
                   />

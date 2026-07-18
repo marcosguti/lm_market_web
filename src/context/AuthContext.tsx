@@ -17,6 +17,9 @@ const USER_KEY = 'lm_market_user';
 const AUTH_LOGOUT_EVENT = 'auth:logout';
 const REFRESH_INTERVAL_MS = 50 * 60 * 1000;
 
+export const DELIVERY_WEB_BLOCKED_MESSAGE =
+  'Las cuentas de reparto solo tienen acceso por la aplicación móvil.';
+
 export interface User {
   id: string;
   email: string;
@@ -26,9 +29,17 @@ export interface User {
   numberIdType?: string;
   type: string;
   address?: string;
+  addressCity?: null | string;
+  addressLatitude?: null | number;
+  addressLongitude?: null | number;
   phone?: string;
   phoneVerified?: boolean;
   emailVerified?: boolean;
+}
+
+/** Delivery drivers use the mobile app only (mirror of mobile admin block). */
+export function isBlockedOnWeb(user: null | Pick<User, 'type'> | undefined): boolean {
+  return user?.type === 'deliveryDriver';
 }
 
 interface LoginResult {
@@ -78,6 +89,7 @@ interface AuthContextValue extends AuthState {
   requestPasswordReset: (email: string) => Promise<{ error?: string }>;
   resetPassword: (token: string, newPassword: string) => Promise<{ error?: string }>;
   validatePasswordResetToken: (token: string) => Promise<{ error?: string }>;
+  setUser: (user: User) => void;
   updateProfile: (data: {
     address?: string;
     firstName?: string;
@@ -130,6 +142,12 @@ function clearAuthStorage(): void {
   localStorage.removeItem(USER_KEY);
 }
 
+function rejectBlockedWebSession(): { error: string } {
+  disconnectSocket();
+  clearAuthStorage();
+  return { error: DELIVERY_WEB_BLOCKED_MESSAGE };
+}
+
 type AuthBootstrapResult = {
   isLoading: false;
   token: string | null;
@@ -154,12 +172,20 @@ async function bootstrapAuth(): Promise<AuthBootstrapResult> {
     return { isLoading: false, token: null, user: null };
   }
   if (status === 200 && data?.user) {
+    if (isBlockedOnWeb(data.user)) {
+      rejectBlockedWebSession();
+      return { isLoading: false, token: null, user: null };
+    }
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return { isLoading: false, token: newAccessToken, user: data.user };
   }
   const userStr = localStorage.getItem(USER_KEY);
   try {
     const user = userStr ? (JSON.parse(userStr) as User) : null;
+    if (isBlockedOnWeb(user)) {
+      rejectBlockedWebSession();
+      return { isLoading: false, token: null, user: null };
+    }
     return { isLoading: false, token: newAccessToken, user: user ?? null };
   } catch {
     clearAuthStorage();
@@ -237,6 +263,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (!res.ok || !data.accessToken) {
       return { error: data.error ?? 'Error al iniciar sesión' };
+    }
+    if (isBlockedOnWeb(data.user as User | undefined)) {
+      return rejectBlockedWebSession();
     }
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
@@ -344,6 +373,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: errData?.error ?? error ?? 'Código inválido',
       };
     }
+    if (isBlockedOnWeb(data.user)) {
+      setState({ isLoading: false, token: null, user: null });
+      return rejectBlockedWebSession();
+    }
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
       localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
@@ -395,6 +428,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         code: errData?.code,
         error: errData?.error ?? error ?? 'Código inválido',
       };
+    }
+    if (isBlockedOnWeb(data.user)) {
+      setState({ isLoading: false, token: null, user: null });
+      return rejectBlockedWebSession();
     }
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
@@ -449,6 +486,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const setUser = useCallback((next: User) => {
+    localStorage.setItem(USER_KEY, JSON.stringify(next));
+    setState((s) => ({ ...s, user: next }));
+  }, []);
+
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     const { error, status } = await request('/api/auth/cambiar-password', {
       currentPassword,
@@ -471,6 +513,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       sendVerificationCode,
       sendLoginCode,
+      setUser,
       updateProfile,
       validatePasswordResetToken,
       verifyEmail,
@@ -486,6 +529,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       sendVerificationCode,
       sendLoginCode,
+      setUser,
       updateProfile,
       validatePasswordResetToken,
       verifyEmail,

@@ -24,7 +24,7 @@ const ROUTES = [
   { path: '/ofertas', allowedTypes: ['admin', 'superAdmin'], marker: 'route-ofertas' },
   { path: '/banners', allowedTypes: ['admin', 'superAdmin'], marker: 'route-banners' },
   { path: '/blog-articles-admin', allowedTypes: ['admin', 'superAdmin'], marker: 'route-blog-articles-admin' },
-  { path: '/reparto', allowedTypes: ['deliveryDriver'], marker: 'route-reparto' },
+  { path: '/metodos-pago', allowedTypes: ['superAdmin'], marker: 'route-metodos-pago' },
 ] as const;
 
 function authUser(state: AuthState) {
