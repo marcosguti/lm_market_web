@@ -143,10 +143,16 @@ const MyOrdersPage = () => {
             render: (_value: number, row: OrderEntity) => `Bs ${formatOrderTotalBs(row, usdRate)}`,
           },
           {
-            title: 'Fecha',
+            title: 'Creación',
             dataIndex: 'createdAt',
             key: 'createdAt',
             render: (value: string) => formatDateTime(value),
+          },
+          {
+            title: 'Pago',
+            dataIndex: 'paymentDate',
+            key: 'paymentDate',
+            render: (value: null | string | undefined) => formatDateTime(value),
           },
           {
             title: 'Acciones',

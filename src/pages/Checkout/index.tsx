@@ -33,6 +33,7 @@ import {
 } from '../../api/payments';
 import { getStores, type Store } from '../../api/stores';
 import { AddressMapPicker } from '../../components/AddressMapPicker';
+import { PATHS } from '../../constants/paths';
 import { formatBs, usdToBs } from '../../constants/pricing';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -109,9 +110,10 @@ const CheckoutPage = () => {
     [paymentConfig?.methods, paymentMethod],
   );
 
-  const screenshotHelp =
-    selectedMethodConfig?.placeholder?.trim() || DEFAULT_SCREENSHOT_HELP;
+  const methodPlaceholder = selectedMethodConfig?.placeholder?.trim() || null;
+  const screenshotHelp = methodPlaceholder || DEFAULT_SCREENSHOT_HELP;
   const methodInformation = selectedMethodConfig?.information?.trim() || null;
+  const notePlaceholder = methodPlaceholder || 'Detalle adicional del pago';
   const noteEnabled = Boolean(selectedMethodConfig?.noteEnabled);
 
   const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
@@ -244,7 +246,7 @@ const CheckoutPage = () => {
     setAlertType('success');
     clearCart({ afterCheckout: true });
     if (!voucher) {
-      setTimeout(() => navigate('/mis-compras'), 1500);
+      setTimeout(() => navigate(PATHS.myOrders), 1500);
     }
   };
 
@@ -370,8 +372,6 @@ const CheckoutPage = () => {
     }
   };
 
-  const merchant = paymentConfig?.merchant;
-
   return (
     <section className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <Space direction="vertical" size={16} className="w-full">
@@ -382,7 +382,7 @@ const CheckoutPage = () => {
         <Card loading={loading} title="Datos del cliente">
           {!order ? (
             <Paragraph>
-              No hay orden pendiente. <Link to="/">Ir al catálogo</Link>
+              No hay orden pendiente. <Link to={PATHS.home}>Ir al catálogo</Link>
             </Paragraph>
           ) : (
             <Space direction="vertical" size={8} className="w-full">
@@ -496,22 +496,16 @@ const CheckoutPage = () => {
 
               {megasoftP2c ? (
                 <>
-                  {merchant ? (
+                  {order && megasoftAmountBs !== null ? (
                     <Alert
                       type="info"
                       showIcon
                       className="mb-4"
-                      message="Datos para transferir (Pago Móvil)"
+                      message="Monto a pagar"
                       description={
                         <Space direction="vertical" size={2}>
-                          {merchant.rif ? <Text>RIF: {merchant.rif}</Text> : null}
-                          <Text>
-                            Banco: {merchant.bankName} ({merchant.bankCode})
-                          </Text>
-                          <Text>Teléfono comercio: {merchant.phone || '—'}</Text>
-                          {order && megasoftAmountBs !== null ? (
-                            <Text strong>Monto exacto: Bs {formatMoney(megasoftAmountBs)}</Text>
-                          ) : null}
+                          <Text strong>Bs {formatMoney(megasoftAmountBs)}</Text>
+                          <Text strong>$ {formatMoney(order.totalAmount)}</Text>
                         </Space>
                       }
                     />
@@ -561,11 +555,6 @@ const CheckoutPage = () => {
                       }))}
                     />
                   </Form.Item>
-                  {megasoftAmountBs !== null ? (
-                    <Form.Item label="Monto a pagar">
-                      <Input readOnly value={`Bs ${formatMoney(megasoftAmountBs)}`} />
-                    </Form.Item>
-                  ) : null}
                 </>
               ) : (
                 <>
@@ -608,7 +597,7 @@ const CheckoutPage = () => {
                         rows={2}
                         maxLength={100}
                         showCount
-                        placeholder="Detalle adicional del pago"
+                        placeholder={notePlaceholder}
                       />
                     </Form.Item>
                   ) : null}
@@ -653,7 +642,7 @@ const CheckoutPage = () => {
         <Card title="Resumen del pedido">
           {!order ? (
             <Paragraph>
-              No hay orden pendiente. <Link to="/">Ir al catálogo</Link>
+              No hay orden pendiente. <Link to={PATHS.home}>Ir al catálogo</Link>
             </Paragraph>
           ) : (
             <Space direction="vertical" size={12} className="w-full">
@@ -697,11 +686,11 @@ const CheckoutPage = () => {
         open={voucherOpen}
         onOk={() => {
           setVoucherOpen(false);
-          navigate('/mis-compras');
+          navigate(PATHS.myOrders);
         }}
         onCancel={() => {
           setVoucherOpen(false);
-          navigate('/mis-compras');
+          navigate(PATHS.myOrders);
         }}
         okText="Ir a mis compras"
         cancelButtonProps={{ style: { display: 'none' } }}

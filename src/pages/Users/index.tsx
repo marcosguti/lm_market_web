@@ -1,10 +1,6 @@
 import type { ColumnsType } from 'antd/es/table';
 
-import {
-  CheckCircleOutlined,
-  DeleteOutlined,
-  EditOutlined,
-} from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import {
   Button,
   Form,
@@ -28,6 +24,7 @@ import {
   patchAdminUser,
   verifyAdminUserEmail,
 } from '../../api/adminUsers';
+import { getStores, type Store } from '../../api/stores';
 import PhoneInput from '../../components/PhoneInput';
 import { NUMBER_ID_TYPE_OPTIONS } from '../../constants/numberIdType';
 import { useAuth } from '../../context/AuthContext';
@@ -54,6 +51,7 @@ const Users = () => {
   const isSuper = currentUser?.type === 'superAdmin';
 
   const [data, setData] = useState<AdminUser[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -66,6 +64,8 @@ const Users = () => {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
+  const createType = Form.useWatch('type', createForm);
+  const editType = Form.useWatch('type', editForm);
 
   const typeOptions = useMemo(() => {
     const base = [
@@ -89,6 +89,16 @@ const Users = () => {
     return typeOptions;
   }, [isSuper, typeOptions]);
 
+  const storeOptions = useMemo(
+    () => stores.map((store) => ({ label: store.name, value: store.id })),
+    [stores]
+  );
+
+  const storeNameById = useMemo(() => {
+    const map = new Map(stores.map((store) => [store.id, store.name]));
+    return map;
+  }, [stores]);
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await getAdminUsers(page, pageSize, search || undefined);
@@ -107,6 +117,12 @@ const Users = () => {
     });
   }, [load]);
 
+  useEffect(() => {
+    void getStores().then((loaded) => {
+      setStores(loaded);
+    });
+  }, []);
+
   const openCreate = () => {
     createForm.resetFields();
     createForm.setFieldsValue({ numberIdType: 'V', type: 'client' });
@@ -116,11 +132,13 @@ const Users = () => {
   const submitCreate = async () => {
     const values = await createForm.validateFields().catch(() => null);
     if (!values) return;
+    const needsStore = values.type === 'admin' || values.type === 'deliveryDriver';
     const res = await createAdminUser({
       ...values,
       address: values.address || undefined,
       phone: values.phone || undefined,
       password: values.password || undefined,
+      storeId: isSuper && needsStore ? values.storeId : undefined,
     });
     if (!res.ok) {
       void message.error((res.data as { error?: string })?.error ?? 'No se pudo crear');
@@ -151,6 +169,7 @@ const Users = () => {
       numberId: row.numberId,
       numberIdType: row.numberIdType,
       phone: row.phone ?? '',
+      storeId: row.storeId ?? undefined,
     };
     editForm.setFieldsValue(row.type === 'superAdmin' ? base : { ...base, type: row.type });
     setEditOpen(true);
@@ -171,6 +190,14 @@ const Users = () => {
     };
     if (editing.type !== 'superAdmin') {
       payload.type = values.type;
+    }
+    if (isSuper) {
+      const nextType = editing.type === 'superAdmin' ? editing.type : values.type;
+      if (nextType === 'admin' || nextType === 'deliveryDriver') {
+        payload.storeId = values.storeId;
+      } else {
+        payload.storeId = null;
+      }
     }
     const res = await patchAdminUser(editing.id, payload);
     if (!res.ok) {
@@ -225,7 +252,7 @@ const Users = () => {
       dataIndex: 'email',
       key: 'email',
       render: (email: string, row) => (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col items-start gap-1">
           <span>{email}</span>
           <Tag color={row.emailVerified ? 'green' : 'orange'}>
             {row.emailVerified ? 'Verificado' : 'Pendiente'}
@@ -250,6 +277,16 @@ const Users = () => {
       key: 'type',
       render: (t: string) => <Tag color={typeColor[t] ?? 'default'}>{typeLabel[t] ?? t}</Tag>,
       title: 'Rol',
+    },
+    {
+      key: 'store',
+      render: (_, row) =>
+        row.type === 'admin' || row.type === 'deliveryDriver'
+          ? row.storeId
+            ? (storeNameById.get(row.storeId) ?? row.storeId)
+            : '—'
+          : '—',
+      title: 'Sede',
     },
     {
       key: 'actions',
@@ -376,6 +413,15 @@ const Users = () => {
           <Form.Item label="Rol" name="type" rules={[{ required: true }]}>
             <Select options={typeOptions} />
           </Form.Item>
+          {isSuper && (createType === 'admin' || createType === 'deliveryDriver') ? (
+            <Form.Item
+              label="Sede"
+              name="storeId"
+              rules={[{ required: true, message: 'Selecciona la sede' }]}
+            >
+              <Select options={storeOptions} placeholder="Selecciona sede" />
+            </Form.Item>
+          ) : null}
           <Form.Item
             label="Teléfono"
             name="phone"
@@ -461,6 +507,15 @@ const Users = () => {
               <Select options={editTypeOptions} />
             </Form.Item>
           )}
+          {isSuper && (editType === 'admin' || editType === 'deliveryDriver') ? (
+            <Form.Item
+              label="Sede"
+              name="storeId"
+              rules={[{ required: true, message: 'Selecciona la sede' }]}
+            >
+              <Select options={storeOptions} placeholder="Selecciona sede" />
+            </Form.Item>
+          ) : null}
           <Form.Item
             label="Teléfono"
             name="phone"

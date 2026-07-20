@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import SEO from '../../components/SEO';
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 
 const RecoverPassword = () => {
@@ -41,7 +42,7 @@ const RecoverPassword = () => {
               showIcon
               type="success"
             />
-            <Link className="text-primary hover:underline" to="/iniciar-sesion">
+            <Link className="text-primary hover:underline" to={PATHS.login}>
               Volver a iniciar sesión
             </Link>
           </div>

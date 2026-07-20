@@ -23,6 +23,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { EmailVerificationLocationState } from '../../types/emailVerification';
 
 import { getNotifications, markAllNotificationsRead } from '../../api/notifications';
+import { PATHS } from '../../constants/paths';
 import { formatBs } from '../../constants/pricing';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -43,7 +44,7 @@ const HEADER_ICON_BTN_CLASS =
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isHome = location.pathname === '/';
+  const isHome = location.pathname === PATHS.home;
   const homeCatalog = useHomeCatalog();
   const { user, isLoading, login, logout } = useAuth();
   const canShop = !user || user.type === 'client';
@@ -141,7 +142,7 @@ const Header = () => {
 
   const handleContinueVerification = (state: EmailVerificationLocationState) => {
     setVerifyModal(null);
-    navigate('/verificar-email', { replace: true, state });
+    navigate(PATHS.verifyEmail, { replace: true, state });
   };
 
   const handleLogout = () => {
@@ -260,7 +261,7 @@ const Header = () => {
       label: (
         <Link
           className="no-underline hover:no-underline"
-          to="/cuenta"
+          to={PATHS.account}
           onClick={() => setMobileMenuOpen(false)}
         >
           Mi cuenta
@@ -274,7 +275,7 @@ const Header = () => {
             label: (
               <Link
                 className="no-underline hover:no-underline"
-                to="/mis-compras"
+                to={PATHS.myOrders}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Mis compras
@@ -288,7 +289,7 @@ const Header = () => {
           {
             key: 'orders',
             label: (
-              <Link className="no-underline hover:no-underline" to="/orders">
+              <Link className="no-underline hover:no-underline" to={PATHS.orders}>
                 Panel órdenes
               </Link>
             ),
@@ -296,7 +297,7 @@ const Header = () => {
           {
             key: 'users',
             label: (
-              <Link className="no-underline hover:no-underline" to="/users">
+              <Link className="no-underline hover:no-underline" to={PATHS.users}>
                 Usuarios
               </Link>
             ),
@@ -304,7 +305,7 @@ const Header = () => {
           {
             key: 'productos',
             label: (
-              <Link className="no-underline hover:no-underline" to="/productos">
+              <Link className="no-underline hover:no-underline" to={PATHS.products}>
                 Productos
               </Link>
             ),
@@ -312,7 +313,7 @@ const Header = () => {
           {
             key: 'ofertas',
             label: (
-              <Link className="no-underline hover:no-underline" to="/ofertas">
+              <Link className="no-underline hover:no-underline" to={PATHS.deals}>
                 Ofertas
               </Link>
             ),
@@ -320,7 +321,7 @@ const Header = () => {
           {
             key: 'banners',
             label: (
-              <Link className="no-underline hover:no-underline" to="/banners">
+              <Link className="no-underline hover:no-underline" to={PATHS.banners}>
                 Banners
               </Link>
             ),
@@ -328,7 +329,7 @@ const Header = () => {
           {
             key: 'blog-articles-admin',
             label: (
-              <Link className="no-underline hover:no-underline" to="/blog-articles-admin">
+              <Link className="no-underline hover:no-underline" to={PATHS.blogArticlesAdmin}>
                 Gestionar blog
               </Link>
             ),
@@ -338,7 +339,7 @@ const Header = () => {
                 {
                   key: 'metodos-pago',
                   label: (
-                    <Link className="no-underline hover:no-underline" to="/metodos-pago">
+                    <Link className="no-underline hover:no-underline" to={PATHS.paymentMethods}>
                       Métodos de pago
                     </Link>
                   ),
@@ -358,30 +359,30 @@ const Header = () => {
     <header className="sticky top-0 z-40 w-full overflow-x-hidden bg-white shadow-md">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between">
-          <Link className="flex items-center no-underline hover:no-underline" to="/">
+          <Link className="flex items-center no-underline hover:no-underline" to={PATHS.home}>
             <img src="/logo.png" alt="LM Market" className="h-16 w-auto" />
           </Link>
           <nav className="hidden md:ml-auto md:flex md:items-center md:gap-6">
             <Link
-              to="/"
+              to={PATHS.home}
               className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
             >
               Inicio
             </Link>
             <Link
-              to="/nosotros"
+              to={PATHS.about}
               className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
             >
               Nosotros
             </Link>
             <Link
-              to="/blog"
+              to={PATHS.blog}
               className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
             >
               Blog
             </Link>
             <Link
-              to="/preguntas-frecuentes"
+              to={PATHS.faq}
               className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
             >
               Preguntas Frecuentes
@@ -402,14 +403,14 @@ const Header = () => {
                 <Button className={HEADER_BTN_CLASS} onClick={handleOpenLogin} type="primary">
                   Iniciar sesión
                 </Button>
-                <Link className="no-underline hover:no-underline" to="/registro">
+                <Link className="no-underline hover:no-underline" to={PATHS.register}>
                   <Button className={HEADER_BTN_CLASS} type="default">
                     Registro
                   </Button>
                 </Link>
               </>
             )}
-            <Link className="no-underline hover:no-underline" to="/contacto">
+            <Link className="no-underline hover:no-underline" to={PATHS.contact}>
               <Button className={HEADER_BTN_CLASS} type="primary">
                 Contacto
               </Button>
@@ -521,7 +522,7 @@ const Header = () => {
                 <Button className={HEADER_BTN_CLASS} onClick={handleOpenLogin} type="primary">
                   Entrar
                 </Button>
-                <Link className="no-underline hover:no-underline" to="/registro">
+                <Link className="no-underline hover:no-underline" to={PATHS.register}>
                   <Button className={HEADER_BTN_CLASS} type="default">
                     Registro
                   </Button>
@@ -592,28 +593,28 @@ const Header = () => {
             <div className="flex flex-col gap-4">
               <Link
                 className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
-                to="/"
+                to={PATHS.home}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Inicio
               </Link>
               <Link
                 className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
-                to="/nosotros"
+                to={PATHS.about}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Nosotros
               </Link>
               <Link
                 className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
-                to="/blog"
+                to={PATHS.blog}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Blog
               </Link>
               <Link
                 className="text-gray-700 no-underline transition-colors hover:text-primary hover:no-underline"
-                to="/preguntas-frecuentes"
+                to={PATHS.faq}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Preguntas Frecuentes
@@ -642,7 +643,7 @@ const Header = () => {
                   </Button>
                   <Link
                     className="no-underline hover:no-underline"
-                    to="/registro"
+                    to={PATHS.register}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <Button block type="default">
@@ -653,7 +654,7 @@ const Header = () => {
               )}
               <Link
                 className="no-underline hover:no-underline"
-                to="/contacto"
+                to={PATHS.contact}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Button block type="primary">
@@ -689,7 +690,7 @@ const Header = () => {
                       return;
                     }
                     setCartDrawerOpen(false);
-                    navigate('/checkout');
+                    navigate(PATHS.checkout);
                   })();
                   return;
                 }
@@ -791,7 +792,7 @@ const Header = () => {
             </Button>
             <p className="text-center text-xs text-gray-400">
               Al continuar aceptas nuestros{' '}
-              <Link to="/terminos" onClick={() => setLoginModalOpen(false)}>
+              <Link to={PATHS.terms} onClick={() => setLoginModalOpen(false)}>
                 términos
               </Link>
             </p>
@@ -851,14 +852,14 @@ const Header = () => {
           <div className="flex flex-col items-center gap-2 text-center">
             <Link
               className="text-sm font-medium text-primary hover:text-primary/80 hover:underline"
-              to="/iniciar-sesion/codigo"
+              to={PATHS.loginCode}
               onClick={() => setLoginModalOpen(false)}
             >
               Iniciar sesión con código
             </Link>
             <Link
               className="text-sm font-medium text-primary hover:text-primary/80 hover:underline"
-              to="/recuperar-password"
+              to={PATHS.recoverPassword}
               onClick={() => setLoginModalOpen(false)}
             >
               ¿Olvidaste tu contraseña?
@@ -867,7 +868,7 @@ const Header = () => {
               ¿No tienes cuenta?{' '}
               <Link
                 className="font-medium text-primary hover:underline"
-                to="/registro"
+                to={PATHS.register}
                 onClick={() => setLoginModalOpen(false)}
               >
                 Regístrate

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 import { getPublicBlogArticles, type PublicBlogArticle } from '../../api/blogArticles';
 import SEO from '../../components/SEO';
+import { PATHS } from '../../constants/paths';
 import { extractFirstImageSrc, htmlToPlainExcerpt } from '../../utils/blogArticleHtmlImages';
 import { formatDate } from '../../utils/formatDate';
 
@@ -130,7 +131,7 @@ const Blog = () => {
                   >
                     <Link
                       className="block aspect-[16/10] overflow-hidden bg-gray-100"
-                      to={`/blog/${post.id}`}
+                      to={PATHS.blogDetail(post.id)}
                     >
                       <img alt={post.title} className="h-full w-full object-cover" src={image} />
                     </Link>
@@ -139,14 +140,14 @@ const Blog = () => {
                         {dateLabel}
                       </time>
                       <h2 className="mb-3 text-xl font-semibold leading-snug text-gray-900">
-                        <Link className="hover:text-primary" to={`/blog/${post.id}`}>
+                        <Link className="hover:text-primary" to={PATHS.blogDetail(post.id)}>
                           {post.title}
                         </Link>
                       </h2>
                       <p className="mb-5 flex-1 text-gray-600">{excerpt}</p>
                       <Link
                         className="font-medium text-primary hover:underline"
-                        to={`/blog/${post.id}`}
+                        to={PATHS.blogDetail(post.id)}
                       >
                         Leer más
                       </Link>

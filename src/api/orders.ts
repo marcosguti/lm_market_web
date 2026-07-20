@@ -156,6 +156,21 @@ export async function assignDelivery(orderId: string, deliveryUserId: string) {
   });
 }
 
+export interface OrderDeliveryDriver {
+  busy: boolean;
+  email: string;
+  firstName: string;
+  id: string;
+  lastName: string;
+  storeId: null | string;
+}
+
+export async function getOrderDeliveryDrivers(orderId: string) {
+  return api<{ drivers: OrderDeliveryDriver[] }>(
+    `/api/admin/orders/${orderId}/delivery-drivers`
+  );
+}
+
 export async function unassignDelivery(orderId: string) {
   return api<{ order: OrderEntity }>(`/api/admin/orders/${orderId}/unassign-delivery`, {
     method: 'POST',

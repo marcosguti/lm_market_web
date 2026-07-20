@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getPublicBlogArticleById, type PublicBlogArticle } from '../../api/blogArticles';
 import BlogArticleContent from '../../components/BlogArticleContent';
 import SEO from '../../components/SEO';
+import { PATHS } from '../../constants/paths';
 import { formatDate } from '../../utils/formatDate';
 
 const BlogDetail = () => {
@@ -46,7 +47,7 @@ const BlogDetail = () => {
       <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
         <h1 className="mb-4 text-2xl font-bold text-gray-900">Artículo no encontrado</h1>
         <p className="mb-8 text-gray-600">Este contenido no está disponible.</p>
-        <Link to="/blog">
+        <Link to={PATHS.blog}>
           <Button type="primary">Volver al blog</Button>
         </Link>
       </div>
@@ -66,7 +67,7 @@ const BlogDetail = () => {
       <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
         <h1 className="mb-4 text-2xl font-bold text-gray-900">Artículo no encontrado</h1>
         <p className="mb-8 text-gray-600">{error ?? 'Este contenido no está disponible.'}</p>
-        <Link to="/blog">
+        <Link to={PATHS.blog}>
           <Button type="primary">Volver al blog</Button>
         </Link>
       </div>
@@ -86,7 +87,7 @@ const BlogDetail = () => {
         >
           <Link
             className="mb-8 inline-block text-sm font-medium text-primary hover:underline"
-            to="/blog"
+            to={PATHS.blog}
           >
             ← Volver al blog
           </Link>

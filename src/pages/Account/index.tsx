@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { AddressMapPicker } from '../../components/AddressMapPicker';
 import PhoneInput from '../../components/PhoneInput';
 import SEO from '../../components/SEO';
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 import {
   DELIVERY_CITY_LABELS,
@@ -271,7 +272,7 @@ const Account = () => {
           </Form>
         </section>
         <p className="mt-[24px] text-sm text-gray-500">
-          <Link className="text-primary hover:underline" to="/">
+          <Link className="text-primary hover:underline" to={PATHS.home}>
             Volver al inicio
           </Link>
         </p>

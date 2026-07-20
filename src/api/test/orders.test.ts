@@ -8,6 +8,7 @@ import {
   getDeliveryMine,
   getKitchenOrders,
   getOrder,
+  getOrderDeliveryDrivers,
   getOrderHistory,
   markDelivered,
   patchOrderLines,
@@ -55,6 +56,12 @@ describe('orders api', () => {
     expect(client.api).toHaveBeenCalledWith('/api/admin/orders/kitchen', {
       params: { page: '1', pageSize: '20' },
     });
+  });
+
+  it('getOrderDeliveryDrivers calls delivery-drivers endpoint', async () => {
+    vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: { drivers: [] } });
+    await getOrderDeliveryDrivers('order-1');
+    expect(client.api).toHaveBeenCalledWith('/api/admin/orders/order-1/delivery-drivers');
   });
 
   it('getKitchenOrders passes optional filters', async () => {

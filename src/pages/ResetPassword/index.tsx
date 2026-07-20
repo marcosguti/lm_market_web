@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import SEO from '../../components/SEO';
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 
 const ResetPassword = () => {
@@ -50,7 +51,7 @@ const ResetPassword = () => {
       return;
     }
     setSuccess(true);
-    setTimeout(() => navigate('/iniciar-sesion'), 3000);
+    setTimeout(() => navigate(PATHS.login), 3000);
   };
 
   if (!token || tokenError) {
@@ -75,7 +76,7 @@ const ResetPassword = () => {
                 showIcon
                 type="error"
               />
-              <Link className="text-primary hover:underline" to="/recuperar-password">
+              <Link className="text-primary hover:underline" to={PATHS.recoverPassword}>
                 Solicitar nuevo enlace
               </Link>
             </>
@@ -112,7 +113,7 @@ const ResetPassword = () => {
               showIcon
               type="success"
             />
-            <Link className="text-primary hover:underline" to="/iniciar-sesion">
+            <Link className="text-primary hover:underline" to={PATHS.login}>
               Ir a iniciar sesión
             </Link>
           </div>
@@ -171,7 +172,7 @@ const ResetPassword = () => {
           </Form>
         )}
         <p className="mt-[16px] text-center text-sm text-gray-600">
-          <Link className="text-primary hover:underline" to="/recuperar-password">
+          <Link className="text-primary hover:underline" to={PATHS.recoverPassword}>
             Solicitar nuevo enlace
           </Link>
         </p>

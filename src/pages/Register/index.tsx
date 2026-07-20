@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import PhoneInput from '../../components/PhoneInput';
 import SEO from '../../components/SEO';
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 import { isValidPersonName } from '../../utils/personName';
 import { isValidPhone } from '../../utils/phone';
@@ -55,7 +56,7 @@ const Register = () => {
       setError(result.error);
       return;
     }
-    navigate('/verificar-email', {
+    navigate(PATHS.verifyEmail, {
       replace: true,
       state: {
         codeExpiresInSeconds: result.codeExpiresInSeconds,
@@ -189,7 +190,7 @@ const Register = () => {
         </Form>
         <p className="mt-[16px] text-center text-sm text-gray-600">
           ¿Ya tienes cuenta?{' '}
-          <Link className="text-primary hover:underline" to="/iniciar-sesion">
+          <Link className="text-primary hover:underline" to={PATHS.login}>
             Iniciar sesión
           </Link>
         </p>

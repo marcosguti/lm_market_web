@@ -28,11 +28,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { OrderEntity, OrderStatus } from '../../types/order';
 
-import { type AdminUser, getAdminUsers } from '../../api/adminUsers';
 import {
   assignDelivery,
   getAdminOrderTracking,
   getKitchenOrders,
+  getOrderDeliveryDrivers,
+  type OrderDeliveryDriver,
   patchAdminOrderStatus,
   unassignDelivery,
   verifyPayment,
@@ -43,6 +44,7 @@ import { OrderProductsModal } from '../../components/OrderProductsModal';
 import { OrderStatusHistoryModal } from '../../components/OrderStatusHistoryModal';
 import { ShortOrderId } from '../../components/ShortOrderId';
 import { formatOrderTotalBs } from '../../constants/pricing';
+import { useAuth } from '../../context/AuthContext';
 import { useUsdRate } from '../../context/ExchangeRateContext';
 import { connectSocket, disconnectSocket, getSocket } from '../../realtime/socket';
 import { formatDateTime } from '../../utils/formatDate';
@@ -53,6 +55,7 @@ import {
   resolveOrderPeriodDates,
 } from '../../utils/orderPeriodFilter';
 import { canCancelOrder, ORDER_STATUS_FLOW, ORDER_STATUS_LABELS } from '../../utils/orderStatus';
+import { loadAdminOrdersFilters, saveAdminOrdersFilters } from './filtersStorage';
 
 const { Title, Text } = Typography;
 
@@ -108,17 +111,23 @@ const statusColor: Record<string, string> = {
 };
 
 const AdminOrdersPage = () => {
+  const { user: currentUser } = useAuth();
+  const isStoreScopedAdmin = currentUser?.type === 'admin';
   const usdRate = useUsdRate();
   const [data, setData] = useState<OrderEntity[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [stores, setStores] = useState<Store[]>([]);
-  const [drivers, setDrivers] = useState<AdminUser[]>([]);
-  const [orderIdInput, setOrderIdInput] = useState('');
-  const [orderIdFilter, setOrderIdFilter] = useState('');
-  const [storeFilter, setStoreFilter] = useState(ALL_FILTER);
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | typeof ALL_FILTER>(ALL_FILTER);
-  const [periodFilter, setPeriodFilter] = useState<OrderPeriodFilter>('today');
+  const [drivers, setDrivers] = useState<OrderDeliveryDriver[]>([]);
+  const [driversLoading, setDriversLoading] = useState(false);
+  const [initialFilters] = useState(() => loadAdminOrdersFilters());
+  const [orderIdInput, setOrderIdInput] = useState(initialFilters.orderIdFilter);
+  const [orderIdFilter, setOrderIdFilter] = useState(initialFilters.orderIdFilter);
+  const [storeFilter, setStoreFilter] = useState(initialFilters.storeFilter);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | typeof ALL_FILTER>(
+    initialFilters.statusFilter
+  );
+  const [periodFilter, setPeriodFilter] = useState<OrderPeriodFilter>(initialFilters.periodFilter);
   const [paymentModal, setPaymentModal] = useState<{
     open: boolean;
     order: OrderEntity | null;
@@ -171,7 +180,10 @@ const AdminOrdersPage = () => {
   const driverOptions = useMemo(
     () =>
       drivers.map((driver) => ({
-        label: `${driver.firstName} ${driver.lastName} (${driver.email})`,
+        disabled: driver.busy,
+        label: `${driver.firstName} ${driver.lastName} (${driver.email})${
+          driver.busy ? ' (ocupado)' : ''
+        }`,
         value: driver.id,
       })),
     [drivers]
@@ -184,7 +196,7 @@ const AdminOrdersPage = () => {
       ...periodDates,
       id: orderIdFilter || undefined,
       status: statusFilter,
-      storeId: storeFilter,
+      ...(isStoreScopedAdmin ? {} : { storeId: storeFilter }),
     });
     setLoading(false);
     if (!result.ok || !result.data?.data) {
@@ -193,6 +205,15 @@ const AdminOrdersPage = () => {
     }
     setData(result.data.data);
     setError('');
+  }, [isStoreScopedAdmin, orderIdFilter, periodFilter, statusFilter, storeFilter]);
+
+  useEffect(() => {
+    saveAdminOrdersFilters({
+      orderIdFilter,
+      periodFilter,
+      statusFilter,
+      storeFilter,
+    });
   }, [orderIdFilter, periodFilter, statusFilter, storeFilter]);
 
   useEffect(() => {
@@ -204,10 +225,6 @@ const AdminOrdersPage = () => {
         if (loadedStores.some((store) => store.id === prev)) return prev;
         return ALL_FILTER;
       });
-      const usersRes = await getAdminUsers(1, 100);
-      if (usersRes.ok && usersRes.data?.data) {
-        setDrivers(usersRes.data.data.filter((user) => user.type === 'deliveryDriver'));
-      }
     })();
   }, []);
 
@@ -281,6 +298,22 @@ const AdminOrdersPage = () => {
     setCancelModal({ open: false, order: null });
     setCancellationReason('');
     void reload();
+  };
+
+  const openAssignModal = async (order: OrderEntity) => {
+    setAssignModal({ open: true, order });
+    setSelectedDriverId(null);
+    setDrivers([]);
+    setDriversLoading(true);
+    const res = await getOrderDeliveryDrivers(order.id);
+    setDriversLoading(false);
+    if (!res.ok || !res.data?.drivers) {
+      void message.error(
+        (res.data as { error?: string })?.error ?? 'No se pudieron cargar los repartidores'
+      );
+      return;
+    }
+    setDrivers(res.data.drivers);
   };
 
   const handleAssign = async () => {
@@ -370,16 +403,18 @@ const AdminOrdersPage = () => {
               }}
             />
           </FilterField>
-          <FilterField label="Sede" testId="filter-store">
-            <Select
-              options={storeOptions}
-              style={{ width: 180 }}
-              value={storeFilter}
-              onChange={(value) => {
-                setStoreFilter(value);
-              }}
-            />
-          </FilterField>
+          {!isStoreScopedAdmin ? (
+            <FilterField label="Sede" testId="filter-store">
+              <Select
+                options={storeOptions}
+                style={{ width: 180 }}
+                value={storeFilter}
+                onChange={(value) => {
+                  setStoreFilter(value);
+                }}
+              />
+            </FilterField>
+          ) : null}
           <FilterField label="Estado" testId="filter-status">
             <Select
               listHeight={360}
@@ -440,7 +475,7 @@ const AdminOrdersPage = () => {
                         }
                       >
                         <CarOutlined
-                          className="cursor-pointer text-gray-500"
+                          className="min-w-[16px] cursor-pointer text-gray-500"
                           aria-label={`Repartidor: ${row.deliveryUserName}`}
                           onClick={() => {
                             if (
@@ -507,6 +542,13 @@ const AdminOrdersPage = () => {
               render: (value: string) => formatDateTime(value),
             },
             {
+              title: 'Pago',
+              dataIndex: 'paymentDate',
+              key: 'paymentDate',
+              width: 150,
+              render: (value: null | string | undefined) => formatDateTime(value),
+            },
+            {
               title: 'Acciones',
               key: 'actions',
               width: 280,
@@ -560,8 +602,7 @@ const AdminOrdersPage = () => {
                           icon={<UserAddOutlined />}
                           aria-label="Asignar repartidor"
                           onClick={() => {
-                            setSelectedDriverId(null);
-                            setAssignModal({ open: true, order: row });
+                            void openAssignModal(row);
                           }}
                         />
                       </Tooltip>
@@ -640,6 +681,7 @@ const AdminOrdersPage = () => {
           onChange={setSelectedDriverId}
           showSearch
           optionFilterProp="label"
+          loading={driversLoading}
         />
       </Modal>
 
@@ -732,9 +774,7 @@ const AdminOrdersPage = () => {
             </p>
             <p>
               <strong>Nota:</strong>{' '}
-              {paymentModal.order.payment?.note?.trim()
-                ? paymentModal.order.payment.note
-                : '—'}
+              {paymentModal.order.payment?.note?.trim() ? paymentModal.order.payment.note : '—'}
             </p>
             <p>
               <strong>Fecha de pago:</strong> {formatDateTime(paymentModal.order.paymentDate)}

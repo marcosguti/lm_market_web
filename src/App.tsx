@@ -1,12 +1,13 @@
 import { ConfigProvider } from 'antd';
 import { useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import Layout from './components/Layout';
 import OrganizationSchema from './components/OrganizationSchema';
 import ProtectedRoute from './components/ProtectedRoute';
 import VerifyEmailRoute from './components/VerifyEmailRoute';
+import { PATHS } from './constants/paths';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ExchangeRateProvider } from './context/ExchangeRateContext';
@@ -36,6 +37,11 @@ import VerifyEmail from './pages/VerifyEmail';
 import GlobalStyles from './styles/GlobalStyles';
 import { theme } from './theme';
 
+function LegacyRedirect({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}${location.hash}`} replace state={location.state} />;
+}
+
 function App() {
   useEffect(() => {
     const loader = document.getElementById('initial-loader-container');
@@ -57,110 +63,134 @@ function App() {
               <BrowserRouter>
                 <Layout>
                   <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/nosotros" element={<About />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/blog/:id" element={<BlogDetail />} />
-                  <Route path="/terminos" element={<Terms />} />
-                  <Route path="/preguntas-frecuentes" element={<FAQ />} />
-                  <Route path="/contacto" element={<Contact />} />
-                  <Route path="/registro" element={<Register />} />
-                  <Route path="/iniciar-sesion" element={<Login />} />
-                  <Route path="/iniciar-sesion/codigo" element={<LoginCode />} />
-                  <Route path="/recuperar-password" element={<RecoverPassword />} />
-                  <Route
-                    path="/verificar-email"
-                    element={
-                      <VerifyEmailRoute>
-                        <VerifyEmail />
-                      </VerifyEmailRoute>
-                    }
-                  />
-                  <Route path="/restablecer-password" element={<ResetPassword />} />
-                  <Route
-                    path="/cuenta"
-                    element={
-                      <ProtectedRoute>
-                        <Account />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/checkout"
-                    element={
-                      <ProtectedRoute allowedTypes={['client']}>
-                        <CheckoutPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/mis-compras"
-                    element={
-                      <ProtectedRoute allowedTypes={['client']}>
-                        <MyOrdersPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/orders"
-                    element={
-                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
-                        <AdminOrdersPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/users"
-                    element={
-                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
-                        <Users />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/productos"
-                    element={
-                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
-                        <AdminProducts />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/ofertas"
-                    element={
-                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
-                        <AdminDeals />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/banners"
-                    element={
-                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
-                        <AdminBanners />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/blog-articles-admin"
-                    element={
-                      <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
-                        <AdminBlogArticles />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/metodos-pago"
-                    element={
-                      <ProtectedRoute allowedTypes={['superAdmin']}>
-                        <AdminPaymentMethods />
-                      </ProtectedRoute>
-                    }
-                  />
-                </Routes>
-              </Layout>
-            </BrowserRouter>
-          </CartProvider>
+                    <Route path={PATHS.home} element={<Home />} />
+                    <Route path={PATHS.about} element={<About />} />
+                    <Route path={PATHS.blog} element={<Blog />} />
+                    <Route path={`${PATHS.blog}/:id`} element={<BlogDetail />} />
+                    <Route path={PATHS.terms} element={<Terms />} />
+                    <Route path={PATHS.faq} element={<FAQ />} />
+                    <Route path={PATHS.contact} element={<Contact />} />
+                    <Route path={PATHS.register} element={<Register />} />
+                    <Route path={PATHS.login} element={<Login />} />
+                    <Route path={PATHS.loginCode} element={<LoginCode />} />
+                    <Route path={PATHS.recoverPassword} element={<RecoverPassword />} />
+                    <Route
+                      path={PATHS.verifyEmail}
+                      element={
+                        <VerifyEmailRoute>
+                          <VerifyEmail />
+                        </VerifyEmailRoute>
+                      }
+                    />
+                    <Route path={PATHS.resetPassword} element={<ResetPassword />} />
+                    <Route
+                      path={PATHS.account}
+                      element={
+                        <ProtectedRoute>
+                          <Account />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.checkout}
+                      element={
+                        <ProtectedRoute allowedTypes={['client']}>
+                          <CheckoutPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.myOrders}
+                      element={
+                        <ProtectedRoute allowedTypes={['client']}>
+                          <MyOrdersPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.orders}
+                      element={
+                        <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                          <AdminOrdersPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.users}
+                      element={
+                        <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                          <Users />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.products}
+                      element={
+                        <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                          <AdminProducts />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.deals}
+                      element={
+                        <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                          <AdminDeals />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.banners}
+                      element={
+                        <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                          <AdminBanners />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.blogArticlesAdmin}
+                      element={
+                        <ProtectedRoute allowedTypes={['admin', 'superAdmin']}>
+                          <AdminBlogArticles />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.paymentMethods}
+                      element={
+                        <ProtectedRoute allowedTypes={['superAdmin']}>
+                          <AdminPaymentMethods />
+                        </ProtectedRoute>
+                      }
+                    />
+                    {/* Legacy English / hybrid path redirects */}
+                    <Route
+                      path="/checkout"
+                      element={<LegacyRedirect to={PATHS.checkout} />}
+                    />
+                    <Route path="/orders" element={<LegacyRedirect to={PATHS.orders} />} />
+                    <Route path="/users" element={<LegacyRedirect to={PATHS.users} />} />
+                    <Route path="/banners" element={<LegacyRedirect to={PATHS.banners} />} />
+                    <Route
+                      path="/blog-articles-admin"
+                      element={<LegacyRedirect to={PATHS.blogArticlesAdmin} />}
+                    />
+                    <Route
+                      path="/recuperar-password"
+                      element={<LegacyRedirect to={PATHS.recoverPassword} />}
+                    />
+                    <Route
+                      path="/verificar-email"
+                      element={<LegacyRedirect to={PATHS.verifyEmail} />}
+                    />
+                    <Route
+                      path="/restablecer-password"
+                      element={<LegacyRedirect to={PATHS.resetPassword} />}
+                    />
+                  </Routes>
+                </Layout>
+              </BrowserRouter>
+            </CartProvider>
           </ExchangeRateProvider>
         </AuthProvider>
       </ConfigProvider>

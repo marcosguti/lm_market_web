@@ -22,6 +22,7 @@ vi.mock('../../../components/SEO', () => ({
   default: () => null,
 }));
 
+import { PATHS } from '../../../constants/paths';
 import BlogDetail from '../index';
 
 describe('BlogDetail page smoke', () => {
@@ -29,7 +30,7 @@ describe('BlogDetail page smoke', () => {
 
   it('renders article detail', async () => {
     render(
-      <MemoryRouter initialEntries={['/blog/b1']}>
+      <MemoryRouter initialEntries={[PATHS.blogDetail('b1')]}>
         <Routes>
           <Route path="/blog/:id" element={<BlogDetail />} />
         </Routes>

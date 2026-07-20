@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PATHS } from '../../../constants/paths';
 import ProtectedRoute from '../index';
 
 const useAuthMock = vi.fn();
@@ -22,8 +23,8 @@ function renderRoute(allowedTypes?: string[]) {
             </ProtectedRoute>
           }
         />
-        <Route path="/iniciar-sesion" element={<div>login-redirect</div>} />
-        <Route path="/" element={<div>home-redirect</div>} />
+        <Route path={PATHS.login} element={<div>login-redirect</div>} />
+        <Route path={PATHS.home} element={<div>home-redirect</div>} />
       </Routes>
     </MemoryRouter>,
   );

@@ -164,6 +164,7 @@ const AdminDeals = () => {
       return;
     }
     const res = await createAdminDeal({
+      active: values.active,
       description: values.description || undefined,
       endDate: dayjs(values.endDate).format('YYYY-MM-DD'),
       imageFile: createImageFile,

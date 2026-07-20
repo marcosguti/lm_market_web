@@ -30,12 +30,14 @@ export async function createAdminDeal(body: {
   startDate: string;
   endDate: string;
   description?: string;
+  active?: boolean;
 }) {
   const formData = new FormData();
   formData.append('image', body.imageFile);
   formData.append('startDate', body.startDate);
   formData.append('endDate', body.endDate);
   if (body.description) formData.append('description', body.description);
+  if (body.active !== undefined) formData.append('active', String(body.active));
 
   return api<{ deal: AdminDeal }>('/api/admin/deals', {
     body: formData,

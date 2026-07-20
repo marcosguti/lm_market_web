@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { PATHS } from '../../constants/paths';
 
 const useAuthMock = vi.fn();
 
@@ -15,16 +16,16 @@ type AuthState = 'guest' | 'client' | 'admin' | 'superAdmin' | 'deliveryDriver';
 const AUTH_STATES: AuthState[] = ['guest', 'client', 'admin', 'superAdmin', 'deliveryDriver'];
 
 const ROUTES = [
-  { path: '/cuenta', allowedTypes: undefined as string[] | undefined, marker: 'route-cuenta' },
-  { path: '/checkout', allowedTypes: ['client'], marker: 'route-checkout' },
-  { path: '/mis-compras', allowedTypes: ['client'], marker: 'route-mis-compras' },
-  { path: '/orders', allowedTypes: ['admin', 'superAdmin'], marker: 'route-orders' },
-  { path: '/users', allowedTypes: ['admin', 'superAdmin'], marker: 'route-users' },
-  { path: '/productos', allowedTypes: ['admin', 'superAdmin'], marker: 'route-productos' },
-  { path: '/ofertas', allowedTypes: ['admin', 'superAdmin'], marker: 'route-ofertas' },
-  { path: '/banners', allowedTypes: ['admin', 'superAdmin'], marker: 'route-banners' },
-  { path: '/blog-articles-admin', allowedTypes: ['admin', 'superAdmin'], marker: 'route-blog-articles-admin' },
-  { path: '/metodos-pago', allowedTypes: ['superAdmin'], marker: 'route-metodos-pago' },
+  { path: PATHS.account, allowedTypes: undefined as string[] | undefined, marker: 'route-cuenta' },
+  { path: PATHS.checkout, allowedTypes: ['client'], marker: 'route-checkout' },
+  { path: PATHS.myOrders, allowedTypes: ['client'], marker: 'route-mis-compras' },
+  { path: PATHS.orders, allowedTypes: ['admin', 'superAdmin'], marker: 'route-orders' },
+  { path: PATHS.users, allowedTypes: ['admin', 'superAdmin'], marker: 'route-users' },
+  { path: PATHS.products, allowedTypes: ['admin', 'superAdmin'], marker: 'route-productos' },
+  { path: PATHS.deals, allowedTypes: ['admin', 'superAdmin'], marker: 'route-ofertas' },
+  { path: PATHS.banners, allowedTypes: ['admin', 'superAdmin'], marker: 'route-banners' },
+  { path: PATHS.blogArticlesAdmin, allowedTypes: ['admin', 'superAdmin'], marker: 'route-blog-articles-admin' },
+  { path: PATHS.paymentMethods, allowedTypes: ['superAdmin'], marker: 'route-metodos-pago' },
 ] as const;
 
 function authUser(state: AuthState) {
@@ -53,8 +54,8 @@ function renderAppRoute(path: string, allowedTypes: string[] | undefined, marker
             </ProtectedRoute>
           }
         />
-        <Route path="/iniciar-sesion" element={<div>login-redirect</div>} />
-        <Route path="/" element={<div>home-redirect</div>} />
+        <Route path={PATHS.login} element={<div>login-redirect</div>} />
+        <Route path={PATHS.home} element={<div>home-redirect</div>} />
       </Routes>
     </MemoryRouter>,
   );

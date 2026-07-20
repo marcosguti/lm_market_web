@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PATHS } from '../../../constants/paths';
 import Login from '../index';
 
 
@@ -110,7 +111,7 @@ describe('Login RBAC redirect', () => {
 
         initialEntries={[
 
-          { pathname: '/iniciar-sesion', state: { from: { pathname: '/checkout' } } },
+          { pathname: PATHS.login, state: { from: { pathname: PATHS.checkout } } },
 
         ]}
 
@@ -118,7 +119,7 @@ describe('Login RBAC redirect', () => {
 
         <Routes>
 
-          <Route path="/iniciar-sesion" element={<Login />} />
+          <Route path={PATHS.login} element={<Login />} />
 
         </Routes>
 
@@ -146,7 +147,7 @@ describe('Login RBAC redirect', () => {
 
     await waitFor(() => {
 
-      expect(navigateMock).toHaveBeenCalledWith('/checkout', { replace: true });
+      expect(navigateMock).toHaveBeenCalledWith(PATHS.checkout, { replace: true });
 
     });
 
@@ -168,11 +169,11 @@ describe('Login RBAC redirect', () => {
 
     render(
 
-      <MemoryRouter initialEntries={['/iniciar-sesion']}>
+      <MemoryRouter initialEntries={[PATHS.login]}>
 
         <Routes>
 
-          <Route path="/iniciar-sesion" element={<Login />} />
+          <Route path={PATHS.login} element={<Login />} />
 
         </Routes>
 
@@ -226,11 +227,11 @@ describe('Login RBAC redirect', () => {
 
     render(
 
-      <MemoryRouter initialEntries={['/iniciar-sesion']}>
+      <MemoryRouter initialEntries={[PATHS.login]}>
 
         <Routes>
 
-          <Route path="/iniciar-sesion" element={<Login />} />
+          <Route path={PATHS.login} element={<Login />} />
 
         </Routes>
 
@@ -268,7 +269,7 @@ describe('Login RBAC redirect', () => {
 
     await waitFor(() => {
 
-      expect(navigateMock).toHaveBeenCalledWith('/verificar-email', {
+      expect(navigateMock).toHaveBeenCalledWith(PATHS.verifyEmail, {
 
         replace: true,
 

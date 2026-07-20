@@ -1,0 +1,42 @@
+[
+  {
+    "question": "¿Cómo creo una cuenta?",
+    "answer": "Entra a Registro, completa tus datos y confirma tu correo con el código que te enviamos. Sin verificar el email no podrás iniciar sesión ni hacer pedidos."
+  },
+  {
+    "question": "¿Cómo inicio sesión?",
+    "answer": "Usa tu correo y contraseña en Iniciar sesión. También puedes entrar con un código enviado a tu email. Si tu cuenta aún no está verificada, te pediremos que ingreses el código de verificación."
+  },
+  {
+    "question": "¿En qué ciudades hacen entregas?",
+    "answer": "Por ahora entregamos en Mérida y Tovar. Tu dirección de entrega debe estar en la misma ciudad de la tienda desde la que compras."
+  },
+  {
+    "question": "¿Cómo configuro mi dirección de entrega?",
+    "answer": "En Mi cuenta puedes marcar tu ubicación en el mapa, elegir la ciudad (Mérida o Tovar) y guardar la dirección. Esa dirección se usa al finalizar el pedido."
+  },
+  {
+    "question": "¿Cómo hago un pedido?",
+    "answer": "Elige una tienda, agrega productos al carrito y ve a Finalizar pedido. Confirma tu dirección, selecciona el método de pago y completa el pago. Luego podrás seguir el estado en Mis compras."
+  },
+  {
+    "question": "¿Qué métodos de pago aceptan?",
+    "answer": "Según lo que tenga activo la tienda, puedes pagar con pago móvil (verificación automática cuando está disponible) u otros métodos que requieren enviar comprobante. Un administrador confirma el pago cuando hace falta revisión manual."
+  },
+  {
+    "question": "¿Cómo funciona el pago móvil?",
+    "answer": "En el checkout verás los datos para transferir. Indica la referencia del pago móvil y confirma. Si la verificación automática está activa, el sistema valida el pago; si no, un administrador lo revisará y te avisaremos cuando quede confirmado."
+  },
+  {
+    "question": "¿Cómo sé el estado de mi pedido?",
+    "answer": "En Mis compras ves el estado actual (pago por confirmar, preparando, en reparto, entregada, etc.). El estado se actualiza en tiempo casi real mientras tienes la página abierta."
+  },
+  {
+    "question": "¿Puedo cancelar un pedido?",
+    "answer": "Según el estado del pedido, la cancelación puede estar disponible desde la plataforma o debes contactar a soporte. Si el pedido ya fue entregado, no se puede cancelar."
+  },
+  {
+    "question": "¿Qué hago si tengo un problema con mi pedido o mi cuenta?",
+    "answer": "Escríbenos a Soporte@lmmarketca.com, llámanos al +58 0412-1184736 o usa la página de Contacto. Incluye el número o identificador de tu pedido para ayudarte más rápido."
+  }
+]

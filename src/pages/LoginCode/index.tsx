@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { OtpInput } from '../../components/OtpInput';
 import SEO from '../../components/SEO';
 import { OTP_DIGIT_COUNT } from '../../constants/formTheme';
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 import { useAutoDismissError } from '../../hooks/useAutoDismissError';
 import { useVerificationCountdown } from '../../hooks/useVerificationCountdown';
@@ -16,7 +17,7 @@ const RESEND_AFTER_VERIFY_ERROR_CODES = new Set(['CODE_EXPIRED', 'TOO_MANY_ATTEM
 const LoginCode = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? PATHS.home;
   const { sendLoginCode, verifyLoginCode } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -194,7 +195,7 @@ const LoginCode = () => {
         )}
 
         <p className="mt-8 text-center text-sm text-gray-600">
-          <Link className="text-primary hover:underline" to="/iniciar-sesion">
+          <Link className="text-primary hover:underline" to={PATHS.login}>
             Volver a iniciar sesión con contraseña
           </Link>
         </p>

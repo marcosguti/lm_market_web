@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +6,10 @@ const useAuthMock = vi.fn();
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../../../components/AddressMapPicker', () => ({
+  AddressMapPicker: () => <div data-testid="address-map-picker-mock" />,
 }));
 
 vi.mock('../../../api/payments', () => ({
@@ -89,7 +93,10 @@ vi.mock('../../../context/CartContext', () => ({
   }),
 }));
 
+import { getPaymentConfig } from '../../../api/payments';
 import CheckoutPage from '../index';
+
+const mockedGetPaymentConfig = vi.mocked(getPaymentConfig);
 
 describe('Checkout page smoke', () => {
   beforeEach(() => {
@@ -97,6 +104,28 @@ describe('Checkout page smoke', () => {
       user: { type: 'client', firstName: 'Ana', lastName: 'Client', email: 'a@test.com' },
       isLoading: false,
       setUser: vi.fn(),
+    });
+    mockedGetPaymentConfig.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: {
+        megasoftEnabled: false,
+        methods: [
+          {
+            information: null,
+            method: 'cash',
+            noteEnabled: true,
+            placeholder: 'Toma una foto legible del billete',
+          },
+          {
+            information: null,
+            method: 'zelle',
+            noteEnabled: true,
+            placeholder: null,
+          },
+        ],
+        usdRate: 40,
+      },
     });
   });
 
@@ -143,6 +172,79 @@ describe('Checkout page smoke', () => {
     await waitFor(() => {
       expect(screen.getByText('Dirección de entrega')).toBeInTheDocument();
       expect(screen.getByText(/Elige una nueva dirección/i)).toBeInTheDocument();
+    });
+  });
+
+  it('uses method information and shows Bs and USD amounts for megasoft pago móvil', async () => {
+    mockedGetPaymentConfig.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: {
+        megasoftEnabled: true,
+        methods: [
+          {
+            information: 'RIF: 502772642\nBanco Plaza',
+            method: 'mobilePayment',
+            noteEnabled: false,
+            placeholder: null,
+          },
+        ],
+        merchant: {
+          bankCode: '0138',
+          bankName: 'Banco Plaza',
+          phone: '04121234567',
+          rif: 'SHOULD-NOT-SHOW',
+        },
+        usdRate: 40,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <CheckoutPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Información del método de pago')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/RIF: 502772642/)).toBeInTheDocument();
+    expect(screen.queryByText(/SHOULD-NOT-SHOW/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Teléfono comercio/)).not.toBeInTheDocument();
+
+    const amountAlert = screen.getByText('Monto a pagar').closest('.ant-alert');
+    expect(amountAlert).toBeTruthy();
+    expect(within(amountAlert as HTMLElement).getByText(/Bs 400,00/)).toBeInTheDocument();
+    expect(within(amountAlert as HTMLElement).getByText(/\$ 10,00/)).toBeInTheDocument();
+  });
+
+  it('uses method placeholder as note field placeholder', async () => {
+    mockedGetPaymentConfig.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: {
+        megasoftEnabled: false,
+        methods: [
+          {
+            information: 'mail@mail.com',
+            method: 'zelle',
+            noteEnabled: true,
+            placeholder: 'Hint de nota Zelle',
+          },
+        ],
+        usdRate: 40,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <CheckoutPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Hint de nota Zelle')).toBeInTheDocument();
     });
   });
 });

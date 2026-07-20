@@ -7,6 +7,7 @@ import type { EmailVerificationLocationState } from '../../types/emailVerificati
 import { OtpInput } from '../../components/OtpInput';
 import SEO from '../../components/SEO';
 import { OTP_DIGIT_COUNT } from '../../constants/formTheme';
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 import { useAutoDismissError } from '../../hooks/useAutoDismissError';
 import { useVerificationCountdown } from '../../hooks/useVerificationCountdown';
@@ -125,7 +126,7 @@ const VerifyEmail = () => {
       return;
     }
 
-    navigate('/', { replace: true });
+    navigate(PATHS.home, { replace: true });
   };
 
   return (

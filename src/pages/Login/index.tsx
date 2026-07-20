@@ -6,13 +6,14 @@ import type { EmailVerificationLocationState } from '../../types/emailVerificati
 
 import SEO from '../../components/SEO';
 import VerifyEmailLoginModal from '../../components/VerifyEmailLoginModal';
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? PATHS.home;
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifyModal, setVerifyModal] = useState<{
@@ -42,7 +43,7 @@ const Login = () => {
 
   const handleContinueVerification = (state: EmailVerificationLocationState) => {
     setVerifyModal(null);
-    navigate('/verificar-email', { replace: true, state });
+    navigate(PATHS.verifyEmail, { replace: true, state });
   };
 
   return (
@@ -92,18 +93,18 @@ const Login = () => {
           </Button>
         </Form>
         <p className="mt-[16px] text-center text-sm text-gray-600">
-          <Link className="text-primary hover:underline" to="/iniciar-sesion/codigo">
+          <Link className="text-primary hover:underline" to={PATHS.loginCode}>
             Iniciar sesión con código
           </Link>
         </p>
         <p className="mt-[8px] text-center text-sm text-gray-600">
-          <Link className="text-primary hover:underline" to="/recuperar-password">
+          <Link className="text-primary hover:underline" to={PATHS.recoverPassword}>
             ¿Olvidaste tu contraseña?
           </Link>
         </p>
         <p className="mt-[8px] text-center text-sm text-gray-600">
           ¿No tienes cuenta?{' '}
-          <Link className="text-primary hover:underline" to="/registro">
+          <Link className="text-primary hover:underline" to={PATHS.register}>
             Regístrate
           </Link>
         </p>

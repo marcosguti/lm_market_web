@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 
+import { PATHS } from '../../constants/paths';
+
 const linkClass = 'text-gray-300 transition-colors hover:text-primary';
 const textClass = 'text-sm text-gray-300';
 
@@ -48,32 +50,32 @@ const Footer = () => {
             <h3 className="mb-4 text-lg font-semibold text-white">Web</h3>
             <ul className={`space-y-2 ${textClass}`}>
               <li>
-                <Link to="/" className={linkClass}>
+                <Link to={PATHS.home} className={linkClass}>
                   Inicio
                 </Link>
               </li>
               <li>
-                <Link to="/nosotros" className={linkClass}>
+                <Link to={PATHS.about} className={linkClass}>
                   Nosotros
                 </Link>
               </li>
               <li>
-                <Link to="/blog" className={linkClass}>
+                <Link to={PATHS.blog} className={linkClass}>
                   Blog
                 </Link>
               </li>
               <li>
-                <Link to="/terminos" className={linkClass}>
+                <Link to={PATHS.terms} className={linkClass}>
                   Términos y Condiciones
                 </Link>
               </li>
               <li>
-                <Link to="/preguntas-frecuentes" className={linkClass}>
+                <Link to={PATHS.faq} className={linkClass}>
                   Preguntas frecuentes
                 </Link>
               </li>
               <li>
-                <Link to="/contacto" className={linkClass}>
+                <Link to={PATHS.contact} className={linkClass}>
                   Contacto
                 </Link>
               </li>

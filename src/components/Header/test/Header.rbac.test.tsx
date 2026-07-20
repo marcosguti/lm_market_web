@@ -3,6 +3,8 @@ import { message } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PATHS } from '../../../constants/paths';
+
 const { useAuthMock, flushCartSyncMock, navigateMock } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   flushCartSyncMock: vi.fn(),
@@ -219,7 +221,7 @@ describe('Header RBAC menu and cart', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ir a pagar' }));
     await waitFor(() => {
       expect(flushCartSyncMock).toHaveBeenCalled();
-      expect(navigateMock).toHaveBeenCalledWith('/checkout');
+      expect(navigateMock).toHaveBeenCalledWith(PATHS.checkout);
     });
   });
 });

@@ -25,6 +25,7 @@ vi.mock('../../../hooks/useVerificationCountdown', () => ({
   }),
 }));
 
+import { PATHS } from '../../../constants/paths';
 import VerifyEmail from '../index';
 
 function renderVerifyEmail(state: Record<string, unknown> = { email: 'a@b.com' }) {
@@ -32,13 +33,13 @@ function renderVerifyEmail(state: Record<string, unknown> = { email: 'a@b.com' }
     <MemoryRouter
       initialEntries={[
         {
-          pathname: '/verificar-email',
+          pathname: PATHS.verifyEmail,
           state: { verificationContext: 'register', ...state },
         },
       ]}
     >
       <Routes>
-        <Route path="/verificar-email" element={<VerifyEmail />} />
+        <Route path={PATHS.verifyEmail} element={<VerifyEmail />} />
       </Routes>
     </MemoryRouter>,
   );

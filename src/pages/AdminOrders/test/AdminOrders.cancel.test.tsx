@@ -9,6 +9,7 @@ vi.mock('../../../api/orders', () => ({
   assignDelivery: vi.fn(),
   getAdminOrderTracking: vi.fn(),
   getKitchenOrders: vi.fn(),
+  getOrderDeliveryDrivers: vi.fn().mockResolvedValue({ ok: true, data: { drivers: [] } }),
   getOrderStatusHistory: vi.fn().mockResolvedValue({ ok: true, data: { history: [] } }),
   patchAdminOrderStatus: vi.fn(),
   unassignDelivery: vi.fn(),
@@ -36,12 +37,20 @@ vi.mock('../../../realtime/socket', () => ({
   getSocket: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })),
 }));
 
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({
+    isLoading: false,
+    user: { id: 'super-1', storeId: null, type: 'superAdmin' },
+  }),
+}));
+
 import AdminOrdersPage from '../index';
 
 describe('AdminOrders cancel with reason', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.setItem('lm_market_token', 'test-token');
+    localStorage.removeItem('lm_market_admin_orders_filters');
     vi.mocked(getKitchenOrders).mockResolvedValue({
       ok: true,
       status: 200,

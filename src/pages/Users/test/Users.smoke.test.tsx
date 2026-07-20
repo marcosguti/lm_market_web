@@ -38,6 +38,15 @@ vi.mock('../../../api/adminUsers', () => ({
   verifyAdminUserEmail: vi.fn(),
 }));
 
+vi.mock('../../../api/stores', () => ({
+  getStores: vi
+    .fn()
+    .mockResolvedValue([
+      { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', name: 'Las Americas', externalBranchCode: '1' },
+    ]),
+}));
+
+import { getStores } from '../../../api/stores';
 import Users from '../index';
 
 async function openCreateModal(): Promise<HTMLElement> {
@@ -57,6 +66,7 @@ describe('Users page RBAC smoke', () => {
   beforeEach(() => {
     authState.user = null;
     roleSelectOptions.latest = [];
+    vi.mocked(getStores).mockClear();
   });
 
   it('renders users title for admin', async () => {
@@ -64,8 +74,11 @@ describe('Users page RBAC smoke', () => {
     render(
       <MemoryRouter>
         <Users />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
+    await waitFor(() => {
+      expect(getStores).toHaveBeenCalled();
+    });
     expect(await screen.findByText('Usuarios')).toBeInTheDocument();
   });
 
@@ -74,12 +87,17 @@ describe('Users page RBAC smoke', () => {
     render(
       <MemoryRouter>
         <Users />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     await screen.findByText('Usuarios');
+    await waitFor(() => {
+      expect(getStores).toHaveBeenCalled();
+    });
     await openCreateModal();
     await waitFor(() => {
-      expect(roleOptionValues()).toEqual(expect.arrayContaining(['client', 'deliveryDriver', 'admin']));
+      expect(roleOptionValues()).toEqual(
+        expect.arrayContaining(['client', 'deliveryDriver', 'admin'])
+      );
     });
   });
 
@@ -88,7 +106,7 @@ describe('Users page RBAC smoke', () => {
     render(
       <MemoryRouter>
         <Users />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     await screen.findByText('Usuarios');
     await openCreateModal();
@@ -96,5 +114,6 @@ describe('Users page RBAC smoke', () => {
       expect(roleOptionValues()).toEqual(expect.arrayContaining(['client', 'deliveryDriver']));
       expect(roleOptionValues()).not.toContain('admin');
     });
+    expect(screen.queryByLabelText('Sede')).not.toBeInTheDocument();
   });
 });

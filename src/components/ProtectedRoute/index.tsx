@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 
+import { PATHS } from '../../constants/paths';
 import { useAuth } from '../../context/AuthContext';
 
 interface ProtectedRouteProps {
@@ -16,11 +17,11 @@ function ProtectedRoute({ allowedTypes, children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return <Navigate to="/iniciar-sesion" state={{ from: location }} replace />;
+    return <Navigate to={PATHS.login} state={{ from: location }} replace />;
   }
 
   if (allowedTypes && allowedTypes.length > 0 && !allowedTypes.includes(user.type)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={PATHS.home} replace />;
   }
 
   return <>{children}</>;

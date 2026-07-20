@@ -5,7 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { DeliveryCitySlug } from '../../utils/deliveryCities';
 
 import { putDeliveryAddress } from '../../api/authAddress';
-import { DELIVERY_CITY_BOUNDS, DELIVERY_CITY_CENTER, DELIVERY_CITY_LABELS } from '../../utils/deliveryCities';
+import {
+  clampToDeliveryCityBounds,
+  DELIVERY_CITY_BOUNDS,
+  DELIVERY_CITY_CENTER,
+  DELIVERY_CITY_LABELS,
+} from '../../utils/deliveryCities';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -55,10 +60,13 @@ export function AddressMapPicker({
     if (!mapboxToken || !mapContainerRef.current) return;
 
     mapboxgl.accessToken = mapboxToken;
-    const startLat = initialLat ?? center.lat;
-    const startLng = initialLng ?? center.lng;
+    const clampedStart = clampToDeliveryCityBounds(
+      expectedCity,
+      initialLat ?? center.lat,
+      initialLng ?? center.lng
+    );
     const map = new mapboxgl.Map({
-      center: [startLng, startLat],
+      center: [clampedStart.longitude, clampedStart.latitude],
       container: mapContainerRef.current,
       maxBounds: [
         [bounds.west, bounds.south],
@@ -71,12 +79,21 @@ export function AddressMapPicker({
     mapRef.current = map;
 
     const marker = new mapboxgl.Marker({ draggable: true, element: createPinElement() })
-      .setLngLat([startLng, startLat])
+      .setLngLat([clampedStart.longitude, clampedStart.latitude])
       .addTo(map);
     markerRef.current = marker;
 
+    const clampMarker = (lng: number, lat: number) => {
+      const next = clampToDeliveryCityBounds(expectedCity, lat, lng);
+      marker.setLngLat([next.longitude, next.latitude]);
+    };
+
     map.on('click', (event) => {
-      marker.setLngLat(event.lngLat);
+      clampMarker(event.lngLat.lng, event.lngLat.lat);
+    });
+    marker.on('dragend', () => {
+      const lngLat = marker.getLngLat();
+      clampMarker(lngLat.lng, lngLat.lat);
     });
 
     return () => {
@@ -85,17 +102,30 @@ export function AddressMapPicker({
       markerRef.current = null;
       mapRef.current = null;
     };
-  }, [bounds.east, bounds.north, bounds.south, bounds.west, center.lat, center.lng, expectedCity, initialLat, initialLng, mapboxToken]);
+  }, [
+    bounds.east,
+    bounds.north,
+    bounds.south,
+    bounds.west,
+    center.lat,
+    center.lng,
+    expectedCity,
+    initialLat,
+    initialLng,
+    mapboxToken,
+  ]);
 
   const handleConfirm = async () => {
     const lngLat = markerRef.current?.getLngLat();
     if (!lngLat) return;
+    const clamped = clampToDeliveryCityBounds(expectedCity, lngLat.lat, lngLat.lng);
+    markerRef.current?.setLngLat([clamped.longitude, clamped.latitude]);
     setSaving(true);
     setError('');
     const result = await putDeliveryAddress({
       expectedCity,
-      latitude: lngLat.lat,
-      longitude: lngLat.lng,
+      latitude: clamped.latitude,
+      longitude: clamped.longitude,
     });
     setSaving(false);
     if (!result.ok || !result.data?.user) {

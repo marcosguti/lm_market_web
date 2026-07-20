@@ -14,6 +14,10 @@ vi.mock('../../../api/adminUsers', () => ({
   verifyAdminUserEmail: (...args: unknown[]) => mockVerifyAdminUserEmail(...args),
 }));
 
+vi.mock('../../../api/stores', () => ({
+  getStores: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({
     user: { id: 'admin-1', type: 'admin' },
@@ -44,6 +48,7 @@ describe('Users admin verify email', () => {
             type: 'client',
             phone: null,
             phoneVerified: false,
+            storeId: null,
             address: null,
             createdAt: '',
             updatedAt: '',

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+import { PATHS } from '../../../constants/paths';
 import VerifyEmailRoute from '../index';
 
 function renderGuard(initialEntry: string | { pathname: string; state?: unknown }) {
@@ -9,14 +10,14 @@ function renderGuard(initialEntry: string | { pathname: string; state?: unknown 
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route
-          path="/verificar-email"
+          path={PATHS.verifyEmail}
           element={
             <VerifyEmailRoute>
               <div>Verify email content</div>
             </VerifyEmailRoute>
           }
         />
-        <Route path="/iniciar-sesion" element={<div>Login page</div>} />
+        <Route path={PATHS.login} element={<div>Login page</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -25,7 +26,7 @@ function renderGuard(initialEntry: string | { pathname: string; state?: unknown 
 describe('VerifyEmailRoute', () => {
   it('renders children when state comes from register flow', () => {
     renderGuard({
-      pathname: '/verificar-email',
+      pathname: PATHS.verifyEmail,
       state: { email: 'user@test.com', verificationContext: 'register' },
     });
 
@@ -34,7 +35,7 @@ describe('VerifyEmailRoute', () => {
 
   it('renders children when state comes from login flow', () => {
     renderGuard({
-      pathname: '/verificar-email',
+      pathname: PATHS.verifyEmail,
       state: { email: 'user@test.com', verificationContext: 'login' },
     });
 
@@ -42,14 +43,14 @@ describe('VerifyEmailRoute', () => {
   });
 
   it('redirects to login when accessed without navigation state', () => {
-    renderGuard('/verificar-email');
+    renderGuard(PATHS.verifyEmail);
 
     expect(screen.queryByText('Verify email content')).not.toBeInTheDocument();
     expect(screen.getByText('Login page')).toBeInTheDocument();
   });
 
   it('redirects to login when email query param is used without context', () => {
-    renderGuard('/verificar-email?email=user@test.com');
+    renderGuard(`${PATHS.verifyEmail}?email=user@test.com`);
 
     expect(screen.queryByText('Verify email content')).not.toBeInTheDocument();
     expect(screen.getByText('Login page')).toBeInTheDocument();
@@ -57,7 +58,7 @@ describe('VerifyEmailRoute', () => {
 
   it('redirects to login when verificationContext is invalid', () => {
     renderGuard({
-      pathname: '/verificar-email',
+      pathname: PATHS.verifyEmail,
       state: { email: 'user@test.com', verificationContext: 'admin' },
     });
 

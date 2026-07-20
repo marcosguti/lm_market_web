@@ -19,6 +19,7 @@ export interface AdminUser {
   numberIdType: NumberIdType;
   phone: null | string;
   phoneVerified: boolean;
+  storeId: null | string;
   type: UserType;
   updatedAt: string;
 }
@@ -55,6 +56,7 @@ export async function createAdminUser(body: {
   numberIdType: NumberIdType;
   password?: string;
   phone?: string;
+  storeId?: string;
   type: AdminAssignableUserType;
 }) {
   return api<CreateUserResponse>('/api/admin/users', {
@@ -73,6 +75,7 @@ export async function patchAdminUser(
     numberId: string;
     numberIdType: NumberIdType;
     phone: string;
+    storeId: null | string;
     type: AdminAssignableUserType;
   }>
 ) {

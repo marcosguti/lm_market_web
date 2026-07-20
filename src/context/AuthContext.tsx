@@ -35,6 +35,7 @@ export interface User {
   phone?: string;
   phoneVerified?: boolean;
   emailVerified?: boolean;
+  storeId?: null | string;
 }
 
 /** Delivery drivers use the mobile app only (mirror of mobile admin block). */
@@ -475,7 +476,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: res,
         error,
         status,
-      } = await request<{ user: User }>('/api/auth/cuenta', data, 'PATCH');
+      } = await request<{ user: User }>('/api/auth/profile', data, 'PATCH');
       if (error || status !== 200 || !res?.user) {
         return { error: (res as { error?: string })?.error ?? error ?? 'Error al actualizar' };
       }
@@ -492,7 +493,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
-    const { error, status } = await request('/api/auth/cambiar-password', {
+    const { error, status } = await request('/api/auth/change-password', {
       currentPassword,
       newPassword,
     });
