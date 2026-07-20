@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AuthProvider,
   DELIVERY_WEB_BLOCKED_MESSAGE,
+  normalizeAuthUser,
   resetAuthBootstrapForTests,
   useAuth,
 } from '../AuthContext';
@@ -297,5 +298,22 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('user')).toHaveTextContent('guest');
     });
     expect(localStorage.getItem('lm_market_token')).toBeNull();
+  });
+
+  it('normalizeAuthUser coerces Decimal string coords to numbers', () => {
+    const user = normalizeAuthUser({
+      id: 'u1',
+      email: 'a@test.com',
+      firstName: 'Ana',
+      lastName: 'Test',
+      numberId: '1',
+      type: 'client',
+      addressLatitude: '8.5981360' as unknown as number,
+      addressLongitude: '-71.1504260' as unknown as number,
+    });
+    expect(typeof user.addressLatitude).toBe('number');
+    expect(typeof user.addressLongitude).toBe('number');
+    expect(user.addressLatitude).toBeCloseTo(8.598136);
+    expect(user.addressLongitude).toBeCloseTo(-71.150426);
   });
 });

@@ -172,6 +172,7 @@ describe('Checkout page smoke', () => {
     await waitFor(() => {
       expect(screen.getByText('Dirección de entrega')).toBeInTheDocument();
       expect(screen.getByText(/Elige una nueva dirección/i)).toBeInTheDocument();
+      expect(screen.getByText(/Instrucciones de entrega/i)).toBeInTheDocument();
     });
   });
 

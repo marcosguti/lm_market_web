@@ -49,7 +49,8 @@ export async function patchOrderLines(
 }
 
 export interface ConfirmPaymentParams {
-  deliveryAddress: string;
+  customerNotes?: string;
+  deliveryAddress?: string;
   deliveryLatitude?: number;
   deliveryLongitude?: number;
   method: 'cash' | 'zelle' | 'mobilePayment' | 'binance';
@@ -62,11 +63,12 @@ export interface ConfirmPaymentParams {
 export async function confirmOrderPayment(orderId: string, params: ConfirmPaymentParams) {
   const formData = new FormData();
   formData.append('method', params.method);
-  formData.append('deliveryAddress', params.deliveryAddress);
+  if (params.deliveryAddress) formData.append('deliveryAddress', params.deliveryAddress);
   if (params.deliveryLatitude != null && params.deliveryLongitude != null) {
     formData.append('deliveryLatitude', String(params.deliveryLatitude));
     formData.append('deliveryLongitude', String(params.deliveryLongitude));
   }
+  if (params.customerNotes) formData.append('customerNotes', params.customerNotes);
   if (params.note) formData.append('note', params.note);
   if (params.reference) formData.append('reference', params.reference);
   if (params.paidAt) formData.append('paidAt', params.paidAt);
@@ -82,11 +84,18 @@ export async function confirmOrderPayment(orderId: string, params: ConfirmPaymen
   );
 }
 
-export async function getOrderHistory(page: number = 1, pageSize: number = 20) {
+export async function getOrderHistory(
+  page: number = 1,
+  pageSize: number = 20,
+  filters: { createdFrom?: string; createdTo?: string; q?: string } = {}
+) {
   return api<PaginatedOrders>('/api/orders/history', {
     params: {
       page: String(page),
       pageSize: String(pageSize),
+      ...(filters.createdFrom ? { createdFrom: filters.createdFrom } : {}),
+      ...(filters.createdTo ? { createdTo: filters.createdTo } : {}),
+      ...(filters.q ? { q: filters.q } : {}),
     },
   });
 }

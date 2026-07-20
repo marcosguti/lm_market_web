@@ -6,10 +6,13 @@ import type { DeliveryCitySlug } from '../../utils/deliveryCities';
 
 import { putDeliveryAddress } from '../../api/authAddress';
 import {
-  clampToDeliveryCityBounds,
+  asCoordNumber,
   DELIVERY_CITY_BOUNDS,
   DELIVERY_CITY_CENTER,
   DELIVERY_CITY_LABELS,
+  deliveryCityMaskGeoJson,
+  deliveryCityPolygonGeoJson,
+  isInsideDeliveryCityPolygon,
 } from '../../utils/deliveryCities';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -27,10 +30,24 @@ function createPinElement() {
   return element;
 }
 
+function resolveStart(
+  expectedCity: DeliveryCitySlug,
+  initialLat?: null | number | string,
+  initialLng?: null | number | string,
+) {
+  const center = DELIVERY_CITY_CENTER[expectedCity];
+  const lat = asCoordNumber(initialLat) ?? center.lat;
+  const lng = asCoordNumber(initialLng) ?? center.lng;
+  if (isInsideDeliveryCityPolygon(expectedCity, lat, lng)) {
+    return { latitude: lat, longitude: lng };
+  }
+  return { latitude: center.lat, longitude: center.lng };
+}
+
 export interface AddressMapPickerProps {
   expectedCity: DeliveryCitySlug;
-  initialLat?: null | number;
-  initialLng?: null | number;
+  initialLat?: null | number | string;
+  initialLng?: null | number | string;
   onSaved: (user: {
     address?: null | string;
     addressCity?: null | string;
@@ -50,23 +67,21 @@ export function AddressMapPicker({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const lastValidRef = useRef(resolveStart(expectedCity, initialLat, initialLng));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const mapboxToken = resolveMapboxToken();
-  const center = DELIVERY_CITY_CENTER[expectedCity];
   const bounds = DELIVERY_CITY_BOUNDS[expectedCity];
 
   useEffect(() => {
     if (!mapboxToken || !mapContainerRef.current) return;
 
     mapboxgl.accessToken = mapboxToken;
-    const clampedStart = clampToDeliveryCityBounds(
-      expectedCity,
-      initialLat ?? center.lat,
-      initialLng ?? center.lng
-    );
+    const start = resolveStart(expectedCity, initialLat, initialLng);
+    lastValidRef.current = start;
+
     const map = new mapboxgl.Map({
-      center: [clampedStart.longitude, clampedStart.latitude],
+      center: [start.longitude, start.latitude],
       container: mapContainerRef.current,
       maxBounds: [
         [bounds.west, bounds.south],
@@ -79,21 +94,74 @@ export function AddressMapPicker({
     mapRef.current = map;
 
     const marker = new mapboxgl.Marker({ draggable: true, element: createPinElement() })
-      .setLngLat([clampedStart.longitude, clampedStart.latitude])
+      .setLngLat([start.longitude, start.latitude])
       .addTo(map);
     markerRef.current = marker;
 
-    const clampMarker = (lng: number, lat: number) => {
-      const next = clampToDeliveryCityBounds(expectedCity, lat, lng);
-      marker.setLngLat([next.longitude, next.latitude]);
+    const applyValidPosition = (lng: number, lat: number) => {
+      if (isInsideDeliveryCityPolygon(expectedCity, lat, lng)) {
+        lastValidRef.current = { latitude: lat, longitude: lng };
+        marker.setLngLat([lng, lat]);
+        return;
+      }
+      const fallback = lastValidRef.current;
+      marker.setLngLat([fallback.longitude, fallback.latitude]);
     };
 
+    const addZoneLayers = () => {
+      if (!map.getSource('delivery-zone')) {
+        map.addSource('delivery-zone', {
+          type: 'geojson',
+          data: deliveryCityPolygonGeoJson(expectedCity),
+        });
+        map.addLayer({
+          id: 'delivery-zone-fill',
+          type: 'fill',
+          source: 'delivery-zone',
+          paint: {
+            'fill-color': '#22c55e',
+            'fill-opacity': 0.28,
+          },
+        });
+        map.addLayer({
+          id: 'delivery-zone-outline',
+          type: 'line',
+          source: 'delivery-zone',
+          paint: {
+            'line-color': '#16a34a',
+            'line-width': 2,
+          },
+        });
+      }
+      if (!map.getSource('delivery-zone-mask')) {
+        map.addSource('delivery-zone-mask', {
+          type: 'geojson',
+          data: deliveryCityMaskGeoJson(expectedCity),
+        });
+        map.addLayer({
+          id: 'delivery-zone-mask-fill',
+          type: 'fill',
+          source: 'delivery-zone-mask',
+          paint: {
+            'fill-color': '#f8d7da',
+            'fill-opacity': 0.35,
+          },
+        });
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      addZoneLayers();
+    } else {
+      map.on('load', addZoneLayers);
+    }
+
     map.on('click', (event) => {
-      clampMarker(event.lngLat.lng, event.lngLat.lat);
+      applyValidPosition(event.lngLat.lng, event.lngLat.lat);
     });
     marker.on('dragend', () => {
       const lngLat = marker.getLngLat();
-      clampMarker(lngLat.lng, lngLat.lat);
+      applyValidPosition(lngLat.lng, lngLat.lat);
     });
 
     return () => {
@@ -107,8 +175,6 @@ export function AddressMapPicker({
     bounds.north,
     bounds.south,
     bounds.west,
-    center.lat,
-    center.lng,
     expectedCity,
     initialLat,
     initialLng,
@@ -118,20 +184,24 @@ export function AddressMapPicker({
   const handleConfirm = async () => {
     const lngLat = markerRef.current?.getLngLat();
     if (!lngLat) return;
-    const clamped = clampToDeliveryCityBounds(expectedCity, lngLat.lat, lngLat.lng);
-    markerRef.current?.setLngLat([clamped.longitude, clamped.latitude]);
+    if (!isInsideDeliveryCityPolygon(expectedCity, lngLat.lat, lngLat.lng)) {
+      const fallback = lastValidRef.current;
+      markerRef.current?.setLngLat([fallback.longitude, fallback.latitude]);
+      setError('Elige un punto dentro de la zona sombreada en verde.');
+      return;
+    }
     setSaving(true);
     setError('');
     const result = await putDeliveryAddress({
       expectedCity,
-      latitude: clamped.latitude,
-      longitude: clamped.longitude,
+      latitude: lngLat.lat,
+      longitude: lngLat.lng,
     });
     setSaving(false);
     if (!result.ok || !result.data?.user) {
       setError(
         (result.data as { error?: string } | undefined)?.error ??
-          'No se pudo guardar la ubicación. Debe estar en la ciudad de la tienda.'
+          'No se pudo guardar la ubicación. Debe estar en la ciudad de la tienda.',
       );
       return;
     }
@@ -157,7 +227,7 @@ export function AddressMapPicker({
         message={`Elige un punto en ${DELIVERY_CITY_LABELS[expectedCity]}${
           storeName ? ` (tienda ${storeName})` : ''
         }`}
-        description="Mueve el pin o toca el mapa. Solo se aceptan ubicaciones en esa ciudad."
+        description="Solo la zona sombreada en verde es válida para entrega."
       />
       {error ? <Alert type="error" showIcon message={error} /> : null}
       <div

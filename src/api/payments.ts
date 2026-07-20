@@ -39,7 +39,8 @@ export async function getPaymentConfig() {
 export interface VerifyMobilePaymentParams {
   amount: number;
   bankCode: string;
-  deliveryAddress: string;
+  customerNotes?: string;
+  deliveryAddress?: string;
   deliveryLatitude?: number;
   deliveryLongitude?: number;
   nationalId: string;

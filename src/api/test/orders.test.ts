@@ -28,6 +28,7 @@ describe('orders api', () => {
     vi.mocked(client.api).mockResolvedValue({ ok: true, status: 200, data: {} });
     const screenshot = new File(['x'], 'proof.png', { type: 'image/png' });
     await confirmOrderPayment('order-1', {
+      customerNotes: 'Portón azul',
       deliveryAddress: 'Calle 123',
       deliveryLatitude: 10.48,
       deliveryLongitude: -66.9,
@@ -42,6 +43,7 @@ describe('orders api', () => {
     expect(options?.skipContentType).toBe(true);
     const formData = options?.body as FormData;
     expect(formData.get('method')).toBe('zelle');
+    expect(formData.get('customerNotes')).toBe('Portón azul');
     expect(formData.get('deliveryAddress')).toBe('Calle 123');
     expect(formData.get('deliveryLatitude')).toBe('10.48');
     expect(formData.get('deliveryLongitude')).toBe('-66.9');

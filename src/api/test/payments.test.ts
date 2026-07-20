@@ -33,6 +33,7 @@ describe('payments api', () => {
     const params = {
       amount: 10,
       bankCode: '0105',
+      customerNotes: 'Portón azul',
       deliveryAddress: 'Calle 123',
       deliveryLatitude: 10.48,
       deliveryLongitude: -66.9,

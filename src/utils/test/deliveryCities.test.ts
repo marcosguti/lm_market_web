@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  clampToDeliveryCityBounds,
+  asCoordNumber,
+  clampToDeliveryCityPolygon,
   DELIVERY_CITY_LABELS,
   isDeliveryCitySlug,
-  isInsideDeliveryCityBounds,
+  isInsideDeliveryCityPolygon,
 } from '../deliveryCities';
 
 describe('deliveryCities', () => {
@@ -20,14 +21,27 @@ describe('deliveryCities', () => {
     expect(DELIVERY_CITY_LABELS.tovar).toContain('Tovar');
   });
 
-  it('rejects Lagunillas/Sucre area and clamps into merida bounds', () => {
-    expect(isInsideDeliveryCityBounds('merida', 8.51, -71.39)).toBe(false);
-    const clamped = clampToDeliveryCityBounds('merida', 8.51, -71.39);
-    expect(isInsideDeliveryCityBounds('merida', clamped.latitude, clamped.longitude)).toBe(true);
+  it('rejects Lagunillas/Sucre and snaps outside pins to city center', () => {
+    expect(isInsideDeliveryCityPolygon('merida', 8.51, -71.39)).toBe(false);
+    const clamped = clampToDeliveryCityPolygon('merida', 8.51, -71.39);
+    expect(isInsideDeliveryCityPolygon('merida', clamped.latitude, clamped.longitude)).toBe(true);
   });
 
-  it('keeps store corridor pins inside merida', () => {
-    expect(isInsideDeliveryCityBounds('merida', 8.598136, -71.150426)).toBe(true);
-    expect(isInsideDeliveryCityBounds('merida', 8.556639, -71.198714)).toBe(true);
+  it('keeps store corridor pins inside merida polygon', () => {
+    expect(isInsideDeliveryCityPolygon('merida', 8.598136, -71.150426)).toBe(true);
+    expect(isInsideDeliveryCityPolygon('merida', 8.556639, -71.198714)).toBe(true);
+  });
+
+  it('keeps Tovar store inside polygon', () => {
+    expect(isInsideDeliveryCityPolygon('tovar', 8.327331, -71.757007)).toBe(true);
+  });
+
+  it('coerces Decimal string coords for polygon checks', () => {
+    expect(asCoordNumber('8.598136')).toBeCloseTo(8.598136);
+    expect(asCoordNumber('-71.150426')).toBeCloseTo(-71.150426);
+    expect(isInsideDeliveryCityPolygon('merida', '8.598136', '-71.150426')).toBe(true);
+    const clamped = clampToDeliveryCityPolygon('merida', '8.598136', '-71.150426');
+    expect(clamped.latitude).toBeCloseTo(8.598136);
+    expect(clamped.longitude).toBeCloseTo(-71.150426);
   });
 });

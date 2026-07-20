@@ -19,6 +19,7 @@ export const PATHS = {
   recoverPassword: '/recuperar-contrasena',
   register: '/registro',
   resetPassword: '/restablecer-contrasena',
+  syncStatus: '/sincronizacion',
   terms: '/terminos',
   users: '/usuarios',
   verifyEmail: '/verificar-correo',

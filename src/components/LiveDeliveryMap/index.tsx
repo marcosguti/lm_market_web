@@ -11,6 +11,8 @@ import type {
 } from '../../types/tracking';
 
 import { connectSocket, getSocket } from '../../realtime/socket';
+import { asCoordNumber } from '../../utils/deliveryCities';
+import { createDeliveryMotorcycleMarkerElement } from '../DeliveryMotorcycleIcon/marker';
 import { formatTrackingDistance, formatTrackingEta } from './formatTracking';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -33,64 +35,76 @@ function resolveMapboxToken() {
   return import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim() ?? '';
 }
 
-function createDriverMarker() {
-  const element = document.createElement('img');
-  element.src = '/delivery_motorcycle.png';
-  element.alt = 'Repartidor';
-  element.width = 40;
-  element.height = 40;
-  element.style.objectFit = 'contain';
+function createDestinationMarkerElement(): HTMLDivElement {
+  const element = document.createElement('div');
+  element.setAttribute('aria-label', 'Destino');
+  element.style.width = '28px';
+  element.style.height = '36px';
   element.style.cursor = 'default';
-  element.onerror = () => {
-    element.replaceWith(createEmojiMarker('🏍️'));
-  };
+  element.style.filter = 'drop-shadow(0 1px 2px rgba(0,0,0,0.35))';
+  element.innerHTML = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="36" aria-hidden="true">
+  <path fill="#97BD11" d="M12 0C5.925 0 1 4.925 1 11c0 7.5 9.2 18.4 10.35 19.7a1 1 0 0 0 1.3 0C13.8 29.4 23 18.5 23 11 23 4.925 18.075 0 12 0z"/>
+  <circle cx="12" cy="11" r="4.5" fill="#ffffff"/>
+</svg>`;
   return element;
 }
 
-function createEmojiMarker(label: string, fontSize = '24px') {
-  const element = document.createElement('div');
-  element.textContent = label;
-  element.style.fontSize = fontSize;
-  element.style.lineHeight = '1';
-  element.style.cursor = 'default';
-  element.setAttribute('aria-hidden', 'true');
-  return element;
+function toLngLat(longitude: unknown, latitude: unknown): [number, number] | null {
+  const lng = asCoordNumber(longitude);
+  const lat = asCoordNumber(latitude);
+  if (lng === null || lat === null) return null;
+  return [lng, lat];
+}
+
+function isMapReady(map: mapboxgl.Map): boolean {
+  const container = map.getContainer();
+  return Boolean(container?.isConnected && container.clientWidth > 0 && container.clientHeight > 0);
 }
 
 function fitMapToTracking(map: mapboxgl.Map, tracking: OrderTrackingSnapshot) {
   const points: [number, number][] = [];
-  if (tracking.location) {
-    points.push([tracking.location.longitude, tracking.location.latitude]);
-  }
-  if (tracking.destination) {
-    points.push([tracking.destination.longitude, tracking.destination.latitude]);
-  }
+  const location = tracking.location
+    ? toLngLat(tracking.location.longitude, tracking.location.latitude)
+    : null;
+  const destination = tracking.destination
+    ? toLngLat(tracking.destination.longitude, tracking.destination.latitude)
+    : null;
+  if (location) points.push(location);
+  if (destination) points.push(destination);
   tracking.routeGeometry?.coordinates?.forEach((coordinate) => {
-    points.push(coordinate);
+    const point = toLngLat(coordinate[0], coordinate[1]);
+    if (point) points.push(point);
   });
 
   if (points.length === 0) return;
   if (points.length === 1) {
-    map.easeTo({ center: points[0], zoom: 14 });
+    map.jumpTo({ center: points[0], zoom: 14 });
     return;
   }
 
-  const bounds = points.reduce(
-    (current, point) => current.extend(point),
-    new mapboxgl.LngLatBounds(points[0], points[0])
-  );
-  map.fitBounds(bounds, { maxZoom: 15, padding: 48 });
+  const bounds = new mapboxgl.LngLatBounds(points[0], points[0]);
+  for (const point of points) {
+    bounds.extend(point);
+  }
+  map.fitBounds(bounds, { duration: 0, maxZoom: 15, padding: 48 });
 }
 
 function updateRouteLayer(map: mapboxgl.Map, tracking: OrderTrackingSnapshot) {
   if (map.getLayer(ROUTE_LAYER_ID)) map.removeLayer(ROUTE_LAYER_ID);
   if (map.getSource(ROUTE_SOURCE_ID)) map.removeSource(ROUTE_SOURCE_ID);
 
-  if (!tracking.routeGeometry?.coordinates?.length) return;
+  const rawCoordinates = tracking.routeGeometry?.coordinates;
+  if (!rawCoordinates?.length) return;
+
+  const coordinates = rawCoordinates
+    .map((coordinate) => toLngLat(coordinate[0], coordinate[1]))
+    .filter((point): point is [number, number] => point !== null);
+  if (coordinates.length < 2) return;
 
   map.addSource(ROUTE_SOURCE_ID, {
     data: {
-      geometry: tracking.routeGeometry,
+      geometry: { coordinates, type: 'LineString' },
       properties: {},
       type: 'Feature',
     },
@@ -99,7 +113,7 @@ function updateRouteLayer(map: mapboxgl.Map, tracking: OrderTrackingSnapshot) {
   map.addLayer({
     id: ROUTE_LAYER_ID,
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#2563eb', 'line-width': 4 },
+    paint: { 'line-color': '#97BD11', 'line-width': 4 },
     source: ROUTE_SOURCE_ID,
     type: 'line',
   });
@@ -119,16 +133,27 @@ export function LiveDeliveryMap({
   const fetchTrackingRef = useRef(fetchTracking);
   const pendingRouteRef = useRef<TrackingRouteEvent | null>(null);
   const didFitCameraRef = useRef(false);
+  const trackingRef = useRef<OrderTrackingSnapshot | null>(null);
+  const trackingEndedRef = useRef(false);
   const [tracking, setTracking] = useState<OrderTrackingSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [trackingEnded, setTrackingEnded] = useState(false);
   const [subscribeError, setSubscribeError] = useState('');
+  const [modalOpened, setModalOpened] = useState(false);
   const mapboxToken = resolveMapboxToken();
 
   useEffect(() => {
     fetchTrackingRef.current = fetchTracking;
   }, [fetchTracking]);
+
+  useEffect(() => {
+    trackingRef.current = tracking;
+  }, [tracking]);
+
+  useEffect(() => {
+    trackingEndedRef.current = trackingEnded;
+  }, [trackingEnded]);
 
   const applyTrackingToMap = useCallback((nextTracking: OrderTrackingSnapshot) => {
     const map = mapRef.current;
@@ -137,7 +162,8 @@ export function LiveDeliveryMap({
     const syncMarker = (
       markerRef: { current: mapboxgl.Marker | null },
       coordinates: [number, number] | null,
-      createElement: () => HTMLElement
+      createElement: () => HTMLElement,
+      markerOptions?: mapboxgl.MarkerOptions
     ) => {
       if (!coordinates) {
         markerRef.current?.remove();
@@ -146,45 +172,69 @@ export function LiveDeliveryMap({
       }
 
       if (!markerRef.current) {
+        // setLngLat before addTo — Mapbox projects on add and rejects missing LngLat.
         markerRef.current = new mapboxgl.Marker({
           element: createElement(),
-        }).addTo(map);
+          ...markerOptions,
+        })
+          .setLngLat(coordinates)
+          .addTo(map);
+        return;
       }
       markerRef.current.setLngLat(coordinates);
     };
 
-    syncMarker(
-      driverMarkerRef,
-      nextTracking.location
-        ? [nextTracking.location.longitude, nextTracking.location.latitude]
-        : null,
-      createDriverMarker
-    );
-    syncMarker(
-      destinationMarkerRef,
-      nextTracking.destination
-        ? [nextTracking.destination.longitude, nextTracking.destination.latitude]
-        : null,
-      () => createEmojiMarker('📍')
-    );
+    const run = () => {
+      if (mapRef.current !== map || !isMapReady(map)) return;
 
-    const refreshLayers = () => {
+      syncMarker(
+        driverMarkerRef,
+        nextTracking.location
+          ? toLngLat(nextTracking.location.longitude, nextTracking.location.latitude)
+          : null,
+        createDeliveryMotorcycleMarkerElement
+      );
+      syncMarker(
+        destinationMarkerRef,
+        nextTracking.destination
+          ? toLngLat(nextTracking.destination.longitude, nextTracking.destination.latitude)
+          : null,
+        createDestinationMarkerElement,
+        { anchor: 'bottom' }
+      );
+
       updateRouteLayer(map, nextTracking);
       if (!didFitCameraRef.current) {
         fitMapToTracking(map, nextTracking);
         didFitCameraRef.current = true;
-      } else if (nextTracking.location) {
-        map.easeTo({
-          center: [nextTracking.location.longitude, nextTracking.location.latitude],
-        });
+      } else {
+        const center = nextTracking.location
+          ? toLngLat(nextTracking.location.longitude, nextTracking.location.latitude)
+          : null;
+        if (center) {
+          map.easeTo({ center });
+        }
       }
     };
 
-    if (map.isStyleLoaded()) {
-      refreshLayers();
+    if (!map.isStyleLoaded()) {
+      map.once('load', () => {
+        map.resize();
+        run();
+      });
       return;
     }
-    map.once('load', refreshLayers);
+
+    map.resize();
+    if (!isMapReady(map)) {
+      requestAnimationFrame(() => {
+        if (mapRef.current !== map) return;
+        map.resize();
+        run();
+      });
+      return;
+    }
+    run();
   }, []);
 
   useEffect(() => {
@@ -207,7 +257,9 @@ export function LiveDeliveryMap({
       .then((result) => {
         if (cancelled) return;
         if (!result.ok || !result.data?.tracking) {
-          setError((result.data as { error?: string })?.error ?? 'No se pudo cargar el seguimiento');
+          setError(
+            (result.data as { error?: string })?.error ?? 'No se pudo cargar el seguimiento'
+          );
           setTracking(null);
           return;
         }
@@ -314,7 +366,7 @@ export function LiveDeliveryMap({
   }, [open, orderId]);
 
   useEffect(() => {
-    if (!open || !mapboxToken || !mapContainerRef.current) return;
+    if (!modalOpened || !mapboxToken || !mapContainerRef.current) return;
 
     mapboxgl.accessToken = mapboxToken;
     const map = new mapboxgl.Map({
@@ -327,6 +379,15 @@ export function LiveDeliveryMap({
     mapRef.current = map;
     didFitCameraRef.current = false;
 
+    const onLoad = () => {
+      map.resize();
+      const snapshot = trackingRef.current;
+      if (snapshot && !trackingEndedRef.current) {
+        applyTrackingToMap(snapshot);
+      }
+    };
+    map.once('load', onLoad);
+
     return () => {
       driverMarkerRef.current?.remove();
       destinationMarkerRef.current?.remove();
@@ -335,7 +396,7 @@ export function LiveDeliveryMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [mapboxToken, open]);
+  }, [applyTrackingToMap, mapboxToken, modalOpened]);
 
   useEffect(() => {
     if (!tracking || !mapRef.current || trackingEnded) return;
@@ -352,6 +413,20 @@ export function LiveDeliveryMap({
       footer={null}
       width={920}
       destroyOnClose
+      afterOpenChange={(visible) => {
+        setModalOpened(visible);
+        if (!visible) return;
+        // Wait a frame after the open animation so the container has real size.
+        requestAnimationFrame(() => {
+          const map = mapRef.current;
+          if (!map) return;
+          map.resize();
+          const snapshot = trackingRef.current;
+          if (snapshot && !trackingEndedRef.current) {
+            applyTrackingToMap(snapshot);
+          }
+        });
+      }}
     >
       {!mapboxToken ? (
         <Alert

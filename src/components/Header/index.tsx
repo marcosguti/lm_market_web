@@ -344,6 +344,14 @@ const Header = () => {
                     </Link>
                   ),
                 },
+                {
+                  key: 'sincronizacion',
+                  label: (
+                    <Link className="no-underline hover:no-underline" to={PATHS.syncStatus}>
+                      Sincronización
+                    </Link>
+                  ),
+                },
               ]
             : []),
         ]

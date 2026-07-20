@@ -19,6 +19,7 @@ import AdminDeals from './pages/AdminDeals';
 import AdminOrdersPage from './pages/AdminOrders';
 import AdminPaymentMethods from './pages/AdminPaymentMethods';
 import AdminProducts from './pages/AdminProducts';
+import AdminSyncStatus from './pages/AdminSyncStatus';
 import Blog from './pages/Blog';
 import BlogDetail from './pages/BlogDetail';
 import CheckoutPage from './pages/Checkout';
@@ -160,6 +161,14 @@ function App() {
                       element={
                         <ProtectedRoute allowedTypes={['superAdmin']}>
                           <AdminPaymentMethods />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path={PATHS.syncStatus}
+                      element={
+                        <ProtectedRoute allowedTypes={['superAdmin']}>
+                          <AdminSyncStatus />
                         </ProtectedRoute>
                       }
                     />

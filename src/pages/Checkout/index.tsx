@@ -49,7 +49,7 @@ import {
   isDeliveryCitySlug,
 } from '../../utils/deliveryCities';
 import { DATE_PICKER_FORMAT } from '../../utils/formatDate';
-import { normalizeVoucherText } from '../../utils/voucher';
+import { formatSuccessfulPaymentVoucher, normalizeVoucherText } from '../../utils/voucher';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -92,6 +92,7 @@ const CheckoutPage = () => {
   const [voucherOpen, setVoucherOpen] = useState(false);
   const [voucherErrorOpen, setVoucherErrorOpen] = useState(false);
   const [pickingAddress, setPickingAddress] = useState(false);
+  const [customerNotes, setCustomerNotes] = useState('');
 
   const paymentMethod = Form.useWatch('paymentMethod', form) as PaymentMethod | undefined;
   const megasoftP2c = isMegasoftP2cCheckout(paymentConfig?.megasoftEnabled, paymentMethod);
@@ -235,7 +236,7 @@ const CheckoutPage = () => {
   const finishSuccess = (updatedOrder: OrderEntity, voucher?: string) => {
     setOrder(updatedOrder);
     if (voucher) {
-      setVoucherText(normalizeVoucherText(voucher));
+      setVoucherText(formatSuccessfulPaymentVoucher(voucher));
       setVoucherOpen(true);
     }
     setInventoryAlert(
@@ -271,6 +272,7 @@ const CheckoutPage = () => {
         const result = await verifyMobilePayment(order.id, {
           amount,
           bankCode: values.payerBankCode as string,
+          customerNotes: customerNotes.trim() || undefined,
           nationalId: values.payerNationalId as string,
           phone: values.payerPhone as string,
           reference: values.payerReference as string,
@@ -335,6 +337,7 @@ const CheckoutPage = () => {
       }
 
       const result = await confirmOrderPayment(order.id, {
+        customerNotes: customerNotes.trim() || undefined,
         method: values.paymentMethod,
         note:
           methodAllowsNote && values.paymentNote
@@ -454,6 +457,21 @@ const CheckoutPage = () => {
               <Button onClick={() => setPickingAddress(true)}>Elegir otra ubicación</Button>
             </Space>
           )}
+          <div className="mt-4">
+            <Text strong>Instrucciones de entrega (opcional)</Text>
+            <Input.TextArea
+              className="mt-2"
+              rows={3}
+              maxLength={280}
+              showCount
+              value={customerNotes}
+              onChange={(e) => setCustomerNotes(e.target.value)}
+              placeholder="Ej. Portón azul, edif. Torre Norte, 3er piso, tocar timbre B"
+            />
+            <Text type="secondary" className="mt-1 block text-xs">
+              Ayuda al repartidor a encontrarte. No uses este campo para datos de pago.
+            </Text>
+          </div>
         </Card>
 
         <Card title="Método de pago">

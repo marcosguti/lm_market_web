@@ -204,7 +204,7 @@ const AdminProducts = () => {
           <span className="text-gray-400">—</span>
         ),
       title: 'Imagen',
-      width: 72,
+      width: 96,
     },
     { dataIndex: 'code', key: 'code', title: 'Código' },
     { dataIndex: 'name', ellipsis: true, key: 'name', title: 'Nombre' },
@@ -440,25 +440,38 @@ const AdminProducts = () => {
                           return (
                             <div
                               key={field.key}
-                              className="mb-4 grid grid-cols-3 items-end gap-3 rounded-lg border border-gray-100 p-3"
+                              className="mb-4 grid grid-cols-3 items-start gap-3 rounded-lg border border-gray-100 p-3"
                             >
-                              <div className="col-span-1 font-medium text-gray-700">
+                              <div className="col-span-1 pt-7 font-medium text-gray-700">
                                 {storeName}
                               </div>
-                              <Form.Item name={[field.name, 'price']} className="mb-0">
+                              <Form.Item name={[field.name, 'storeId']} hidden>
+                                <Input type="hidden" />
+                              </Form.Item>
+                              <Form.Item
+                                name={[field.name, 'price']}
+                                label="Precio"
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Requerido' }]}
+                              >
                                 <InputNumber
                                   className="w-full"
                                   min={0}
                                   precision={2}
-                                  placeholder="Precio (Bs)"
+                                  placeholder="Bs"
                                 />
                               </Form.Item>
-                              <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
+                              <Form.Item
+                                name={[field.name, 'stockQuantity']}
+                                label="Stock"
+                                className="mb-0"
+                                rules={[{ required: true, message: 'Requerido' }]}
+                              >
                                 <InputNumber
                                   className="w-full"
                                   min={0}
                                   precision={0}
-                                  placeholder="Existencias"
+                                  placeholder="Cantidad"
                                 />
                               </Form.Item>
                             </div>
@@ -563,25 +576,38 @@ const AdminProducts = () => {
                         fields.map((field) => (
                           <div
                             key={field.key}
-                            className="mb-4 grid grid-cols-3 items-end gap-3 rounded-lg border border-gray-100 p-3"
+                            className="mb-4 grid grid-cols-3 items-start gap-3 rounded-lg border border-gray-100 p-3"
                           >
-                            <div className="col-span-1 font-medium text-gray-700">
+                            <div className="col-span-1 pt-7 font-medium text-gray-700">
                               {stores[field.name]?.name ?? `Tienda ${field.name + 1}`}
                             </div>
-                            <Form.Item name={[field.name, 'price']} className="mb-0">
+                            <Form.Item name={[field.name, 'storeId']} hidden>
+                              <Input type="hidden" />
+                            </Form.Item>
+                            <Form.Item
+                              name={[field.name, 'price']}
+                              label="Precio"
+                              className="mb-0"
+                              rules={[{ required: true, message: 'Requerido' }]}
+                            >
                               <InputNumber
                                 className="w-full"
                                 min={0}
                                 precision={2}
-                                placeholder="Precio (Bs)"
+                                placeholder="Bs"
                               />
                             </Form.Item>
-                            <Form.Item name={[field.name, 'stockQuantity']} className="mb-0">
+                            <Form.Item
+                              name={[field.name, 'stockQuantity']}
+                              label="Stock"
+                              className="mb-0"
+                              rules={[{ required: true, message: 'Requerido' }]}
+                            >
                               <InputNumber
                                 className="w-full"
                                 min={0}
                                 precision={0}
-                                placeholder="Existencias"
+                                placeholder="Cantidad"
                               />
                             </Form.Item>
                           </div>

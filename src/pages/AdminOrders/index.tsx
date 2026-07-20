@@ -1,10 +1,8 @@
 import type { ReactNode } from 'react';
 
 import {
-  CarOutlined,
   CloseOutlined,
   CreditCardOutlined,
-  EnvironmentOutlined,
   EyeOutlined,
   UndoOutlined,
   UnorderedListOutlined,
@@ -39,6 +37,7 @@ import {
   verifyPayment,
 } from '../../api/orders';
 import { getStores, type Store } from '../../api/stores';
+import { DeliveryMotorcycleIcon } from '../../components/DeliveryMotorcycleIcon';
 import { LiveDeliveryMap } from '../../components/LiveDeliveryMap';
 import { OrderProductsModal } from '../../components/OrderProductsModal';
 import { OrderStatusHistoryModal } from '../../components/OrderStatusHistoryModal';
@@ -474,19 +473,21 @@ const AdminOrdersPage = () => {
                           </>
                         }
                       >
-                        <CarOutlined
-                          className="min-w-[16px] cursor-pointer text-gray-500"
-                          aria-label={`Repartidor: ${row.deliveryUserName}`}
-                          onClick={() => {
-                            if (
-                              status === 'delivering' &&
-                              row.deliveryLatitude != null &&
-                              row.deliveryLongitude != null
-                            ) {
-                              setTrackingModal({ open: true, orderId: row.id });
-                            }
-                          }}
-                        />
+                        <span className="inline-flex">
+                          <DeliveryMotorcycleIcon
+                            size={36}
+                            aria-label={`Repartidor: ${row.deliveryUserName}`}
+                            onClick={() => {
+                              if (
+                                status === 'delivering' &&
+                                row.deliveryLatitude != null &&
+                                row.deliveryLongitude != null
+                              ) {
+                                setTrackingModal({ open: true, orderId: row.id });
+                              }
+                            }}
+                          />
+                        </span>
                       </Tooltip>
                     ) : null}
                   </span>
@@ -616,19 +617,6 @@ const AdminOrdersPage = () => {
                           icon={<UndoOutlined />}
                           aria-label="Rechazar asignación"
                           onClick={() => handleUnassign(row)}
-                        />
-                      </Tooltip>
-                    ) : null}
-                    {row.status === 'delivering' &&
-                    row.deliveryLatitude != null &&
-                    row.deliveryLongitude != null ? (
-                      <Tooltip title="Seguimiento en vivo">
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EnvironmentOutlined />}
-                          aria-label="Seguimiento en vivo"
-                          onClick={() => setTrackingModal({ open: true, orderId: row.id })}
                         />
                       </Tooltip>
                     ) : null}

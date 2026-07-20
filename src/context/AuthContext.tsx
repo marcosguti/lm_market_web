@@ -10,6 +10,7 @@ import {
 
 import { apiUrl, getDeviceId, tryRefreshToken } from '../api/client';
 import { disconnectSocket } from '../realtime/socket';
+import { asCoordNumber } from '../utils/deliveryCities';
 
 const TOKEN_KEY = 'lm_market_token';
 const REFRESH_TOKEN_KEY = 'lm_market_refresh_token';
@@ -36,6 +37,15 @@ export interface User {
   phoneVerified?: boolean;
   emailVerified?: boolean;
   storeId?: null | string;
+}
+
+/** Coerce Decimal string coords from API/localStorage into numbers. */
+export function normalizeAuthUser(user: User): User {
+  return {
+    ...user,
+    addressLatitude: asCoordNumber(user.addressLatitude),
+    addressLongitude: asCoordNumber(user.addressLongitude),
+  };
 }
 
 /** Delivery drivers use the mobile app only (mirror of mobile admin block). */
@@ -177,17 +187,19 @@ async function bootstrapAuth(): Promise<AuthBootstrapResult> {
       rejectBlockedWebSession();
       return { isLoading: false, token: null, user: null };
     }
-    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-    return { isLoading: false, token: newAccessToken, user: data.user };
+    const user = normalizeAuthUser(data.user);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    return { isLoading: false, token: newAccessToken, user };
   }
   const userStr = localStorage.getItem(USER_KEY);
   try {
-    const user = userStr ? (JSON.parse(userStr) as User) : null;
+    const parsed = userStr ? (JSON.parse(userStr) as User) : null;
+    const user = parsed ? normalizeAuthUser(parsed) : null;
     if (isBlockedOnWeb(user)) {
       rejectBlockedWebSession();
       return { isLoading: false, token: null, user: null };
     }
-    return { isLoading: false, token: newAccessToken, user: user ?? null };
+    return { isLoading: false, token: newAccessToken, user };
   } catch {
     clearAuthStorage();
     return { isLoading: false, token: null, user: null };
@@ -268,12 +280,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isBlockedOnWeb(data.user as User | undefined)) {
       return rejectBlockedWebSession();
     }
+    const user = normalizeAuthUser(data.user as User);
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
       localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
     }
-    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-    setState({ isLoading: false, token: data.accessToken, user: data.user });
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    setState({ isLoading: false, token: data.accessToken, user });
     return {};
   }, []);
 
@@ -378,12 +391,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ isLoading: false, token: null, user: null });
       return rejectBlockedWebSession();
     }
+    const user = normalizeAuthUser(data.user);
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
       localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
     }
-    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-    setState({ isLoading: false, token: data.accessToken, user: data.user });
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    setState({ isLoading: false, token: data.accessToken, user });
     return {};
   }, []);
 
@@ -434,12 +448,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ isLoading: false, token: null, user: null });
       return rejectBlockedWebSession();
     }
+    const user = normalizeAuthUser(data.user);
     localStorage.setItem(TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
       localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
     }
-    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-    setState({ isLoading: false, token: data.accessToken, user: data.user });
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    setState({ isLoading: false, token: data.accessToken, user });
     return {};
   }, []);
 
@@ -480,16 +495,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error || status !== 200 || !res?.user) {
         return { error: (res as { error?: string })?.error ?? error ?? 'Error al actualizar' };
       }
-      localStorage.setItem(USER_KEY, JSON.stringify(res.user));
-      setState((s) => ({ ...s, user: res.user }));
+      const user = normalizeAuthUser(res.user);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      setState((s) => ({ ...s, user }));
       return {};
     },
     []
   );
 
   const setUser = useCallback((next: User) => {
-    localStorage.setItem(USER_KEY, JSON.stringify(next));
-    setState((s) => ({ ...s, user: next }));
+    const user = normalizeAuthUser(next);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    setState((s) => ({ ...s, user }));
   }, []);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {

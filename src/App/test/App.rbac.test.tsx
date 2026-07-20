@@ -26,6 +26,7 @@ const ROUTES = [
   { path: PATHS.banners, allowedTypes: ['admin', 'superAdmin'], marker: 'route-banners' },
   { path: PATHS.blogArticlesAdmin, allowedTypes: ['admin', 'superAdmin'], marker: 'route-blog-articles-admin' },
   { path: PATHS.paymentMethods, allowedTypes: ['superAdmin'], marker: 'route-metodos-pago' },
+  { path: PATHS.syncStatus, allowedTypes: ['superAdmin'], marker: 'route-sincronizacion' },
 ] as const;
 
 function authUser(state: AuthState) {

@@ -1,33 +1,23 @@
-import { EyeOutlined } from '@ant-design/icons';
-import { Alert, Button, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Empty, Input, Pagination, Select, Spin, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { OrderEntity } from '../../types/order';
 
 import { getOrderHistory } from '../../api/orders';
+import { OrderHistoryCard } from '../../components/OrderHistoryCard';
 import { OrderProductsModal } from '../../components/OrderProductsModal';
-import { ShortOrderId } from '../../components/ShortOrderId';
-import { formatOrderTotalBs } from '../../constants/pricing';
 import { useUsdRate } from '../../context/ExchangeRateContext';
 import { connectSocket } from '../../realtime/socket';
-import { formatDateTime } from '../../utils/formatDate';
-import { ORDER_STATUS_LABELS } from '../../utils/orderStatus';
+import {
+  CLIENT_HISTORY_PERIOD_OPTIONS,
+  type ClientHistoryPeriod,
+  resolveClientHistoryPeriodDates,
+} from '../../utils/clientOrderHistoryPeriod';
 
 const { Title } = Typography;
 
 const TOKEN_KEY = 'lm_market_token';
-
-const statusColor: Record<string, string> = {
-  assignedToDeliveryDriver: 'geekblue',
-  cancelled: 'red',
-  delivering: 'blue',
-  delivered: 'green',
-  paymentConfirmed: 'gold',
-  paymentPendingConfirmation: 'orange',
-  pending: 'default',
-  preparing: 'purple',
-  readyForDelivery: 'cyan',
-};
+const PAGE_SIZE = 10;
 
 interface OrderUpdatedPayload {
   id: string;
@@ -40,28 +30,51 @@ const MyOrdersPage = () => {
   const [data, setData] = useState<OrderEntity[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [period, setPeriod] = useState<ClientHistoryPeriod>('last30d');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [productsModal, setProductsModal] = useState<{
     open: boolean;
     order: OrderEntity | null;
   }>({ open: false, order: null });
 
-  const refetchOrders = useCallback(async () => {
-    setLoading(true);
-    const result = await getOrderHistory(1, 50);
-    setLoading(false);
-    if (!result.ok || !result.data?.data) {
-      setError((result.data as { error?: string })?.error ?? 'No se pudo cargar el historial');
-      return;
-    }
-    setData(result.data.data);
-    setError('');
+  const buildFilters = useCallback((nextPeriod: ClientHistoryPeriod, nextSearch: string) => {
+    const dates = resolveClientHistoryPeriodDates(nextPeriod);
+    const q = nextSearch.trim();
+    return {
+      ...dates,
+      ...(q ? { q } : {}),
+    };
   }, []);
+
+  const fetchOrders = useCallback(
+    async (nextPage: number, nextPeriod: ClientHistoryPeriod, nextSearch: string) => {
+      setLoading(true);
+      const result = await getOrderHistory(nextPage, PAGE_SIZE, buildFilters(nextPeriod, nextSearch));
+      setLoading(false);
+      if (!result.ok || !result.data?.data) {
+        setError((result.data as { error?: string })?.error ?? 'No se pudo cargar el historial');
+        return;
+      }
+      setData(result.data.data);
+      setTotal(result.data.total);
+      setPage(result.data.page);
+      setError('');
+    },
+    [buildFilters]
+  );
+
+  const refetchOrders = useCallback(async () => {
+    await fetchOrders(page, period, search);
+  }, [fetchOrders, page, period, search]);
 
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       setLoading(true);
-      const result = await getOrderHistory(1, 50);
+      const result = await getOrderHistory(1, PAGE_SIZE, buildFilters(period, search));
       if (cancelled) return;
       setLoading(false);
       if (!result.ok || !result.data?.data) {
@@ -69,12 +82,16 @@ const MyOrdersPage = () => {
         return;
       }
       setData(result.data.data);
+      setTotal(result.data.total);
+      setPage(result.data.page);
       setError('');
     };
     void run();
     return () => {
       cancelled = true;
     };
+    // Initial load only; subsequent fetches go through period/search handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
   }, []);
 
   useEffect(() => {
@@ -109,70 +126,77 @@ const MyOrdersPage = () => {
     <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <Title level={2}>Mis compras</Title>
       {error ? <Alert type="error" showIcon message={error} className="mb-4" /> : null}
-      <Table
-        loading={loading}
-        rowKey="id"
-        dataSource={data}
-        columns={[
-          {
-            title: 'Orden',
-            dataIndex: 'id',
-            key: 'id',
-            render: (id: string) => <ShortOrderId id={id} />,
-          },
-          {
-            title: 'Estado',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string) => (
-              <Tag color={statusColor[status] ?? 'default'}>
-                {ORDER_STATUS_LABELS[status as keyof typeof ORDER_STATUS_LABELS] ?? status}
-              </Tag>
-            ),
-          },
-          {
-            title: 'Sede',
-            dataIndex: 'storeName',
-            key: 'storeName',
-            render: (value: string | null | undefined) => value?.trim() || '—',
-          },
-          {
-            title: 'Total',
-            dataIndex: 'totalAmount',
-            key: 'totalAmount',
-            render: (_value: number, row: OrderEntity) => `Bs ${formatOrderTotalBs(row, usdRate)}`,
-          },
-          {
-            title: 'Creación',
-            dataIndex: 'createdAt',
-            key: 'createdAt',
-            render: (value: string) => formatDateTime(value),
-          },
-          {
-            title: 'Pago',
-            dataIndex: 'paymentDate',
-            key: 'paymentDate',
-            render: (value: null | string | undefined) => formatDateTime(value),
-          },
-          {
-            title: 'Acciones',
-            key: 'actions',
-            width: 80,
-            render: (_, row: OrderEntity) => (
-              <Space size={0}>
-                <Tooltip title="Ver productos">
-                  <Button
-                    type="text"
-                    icon={<EyeOutlined />}
-                    aria-label="Ver productos de la orden"
-                    onClick={() => setProductsModal({ open: true, order: row })}
-                  />
-                </Tooltip>
-              </Space>
-            ),
-          },
-        ]}
-      />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-800">
+            <strong>{total === 1 ? '1 pedido' : `${total} pedidos`}</strong> realizados en
+          </span>
+          <Select
+            aria-label="Período de pedidos"
+            className="min-w-[180px]"
+            options={CLIENT_HISTORY_PERIOD_OPTIONS}
+            value={period}
+            onChange={(value: ClientHistoryPeriod) => {
+              setPeriod(value);
+              void fetchOrders(1, value, search);
+            }}
+          />
+        </div>
+        <Input.Search
+          allowClear
+          className="w-full max-w-[350px]"
+          enterButton="Buscar"
+          placeholder="Buscar todos los pedidos"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          onSearch={(value) => {
+            const next = value.trim();
+            setSearchInput(value);
+            setSearch(next);
+            void fetchOrders(1, period, next);
+          }}
+        />
+      </div>
+
+      <Spin spinning={loading}>
+        {!loading && data.length === 0 && !error ? (
+          <Empty
+            description={
+              search || period !== 'all'
+                ? 'No hay pedidos para estos filtros'
+                : 'No tienes órdenes aún'
+            }
+            className="py-16"
+          />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {data.map((order) => (
+              <OrderHistoryCard
+                key={order.id}
+                order={order}
+                usdRate={usdRate}
+                onViewDetail={(selected) => setProductsModal({ open: true, order: selected })}
+              />
+            ))}
+          </div>
+        )}
+      </Spin>
+
+      {total > PAGE_SIZE ? (
+        <div className="mt-6 flex justify-end">
+          <Pagination
+            current={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            showSizeChanger={false}
+            onChange={(nextPage) => {
+              void fetchOrders(nextPage, period, search);
+            }}
+          />
+        </div>
+      ) : null}
+
       <OrderProductsModal
         open={productsModal.open}
         order={productsModal.order}

@@ -125,7 +125,7 @@ describe('AdminOrders delivery driver icon', () => {
     });
   });
 
-  it('shows live tracking action only when delivering with destination GPS', async () => {
+  it('opens live tracking from driver icon when delivering with destination GPS', async () => {
     render(
       <MemoryRouter>
         <AdminOrdersPage />
@@ -133,11 +133,12 @@ describe('AdminOrders delivery driver icon', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Seguimiento en vivo')).toBeInTheDocument();
+      expect(screen.getByLabelText('Repartidor: Jose Perez')).toBeInTheDocument();
     });
+    expect(screen.queryByLabelText('Seguimiento en vivo')).not.toBeInTheDocument();
   });
 
-  it('hides live tracking action when delivering without destination GPS', async () => {
+  it('still shows driver icon when delivering without destination GPS', async () => {
     vi.mocked(getKitchenOrders).mockResolvedValue({
       ok: true,
       status: 200,
@@ -190,6 +191,7 @@ describe('AdminOrders delivery driver icon', () => {
 
     await waitFor(() => {
       expect(screen.getByText('En Reparto')).toBeInTheDocument();
+      expect(screen.getByLabelText('Repartidor: Jose Perez')).toBeInTheDocument();
     });
     expect(screen.queryByLabelText('Seguimiento en vivo')).not.toBeInTheDocument();
   });

@@ -154,7 +154,26 @@ describe('Header RBAC menu and cart', () => {
       expect(screen.getAllByText('Panel órdenes').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('Ofertas').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('Métodos de pago').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Sincronización').length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it('hides sync status link for admin', async () => {
+    useAuthMock.mockReturnValue({
+      user: { firstName: 'Admin', lastName: 'User', type: 'admin' },
+      isLoading: false,
+      logout: vi.fn(),
+    });
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>
+    );
+    openUserMenu();
+    await waitFor(() => {
+      expect(screen.getAllByText('Panel órdenes').length).toBeGreaterThanOrEqual(1);
+    });
+    expect(screen.queryByText('Sincronización')).not.toBeInTheDocument();
   });
 
   it('hides cart icon for deliveryDriver', () => {

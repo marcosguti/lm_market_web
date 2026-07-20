@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { type ReactNode, useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { OrderTrackingSnapshot } from '../../types/tracking';
@@ -9,14 +10,17 @@ const mapInstances: Array<{
   addSource: ReturnType<typeof vi.fn>;
   easeTo: ReturnType<typeof vi.fn>;
   fitBounds: ReturnType<typeof vi.fn>;
+  getContainer: ReturnType<typeof vi.fn>;
   getLayer: ReturnType<typeof vi.fn>;
   getSource: ReturnType<typeof vi.fn>;
   isStyleLoaded: ReturnType<typeof vi.fn>;
+  jumpTo: ReturnType<typeof vi.fn>;
   on: ReturnType<typeof vi.fn>;
   once: ReturnType<typeof vi.fn>;
   remove: ReturnType<typeof vi.fn>;
   removeLayer: ReturnType<typeof vi.fn>;
   removeSource: ReturnType<typeof vi.fn>;
+  resize: ReturnType<typeof vi.fn>;
 }> = [];
 
 const markerInstances: Array<{
@@ -32,14 +36,21 @@ vi.mock('mapbox-gl', () => {
     addSource = vi.fn();
     easeTo = vi.fn();
     fitBounds = vi.fn();
+    getContainer = vi.fn(() => ({
+      clientHeight: 420,
+      clientWidth: 800,
+      isConnected: true,
+    }));
     getLayer = vi.fn();
     getSource = vi.fn();
     isStyleLoaded = vi.fn(() => true);
+    jumpTo = vi.fn();
     on = vi.fn();
     once = vi.fn((_event: string, callback: () => void) => callback());
     remove = vi.fn();
     removeLayer = vi.fn();
     removeSource = vi.fn();
+    resize = vi.fn();
 
     constructor() {
       mapInstances.push(this);
@@ -90,6 +101,40 @@ vi.mock('../../../realtime/socket', () => ({
     on: socketOn,
   })),
 }));
+
+vi.mock('antd', async () => {
+  const actual = await vi.importActual<typeof import('antd')>('antd');
+
+  function TestModal({
+    afterOpenChange,
+    children,
+    open,
+    title,
+  }: {
+    afterOpenChange?: (visible: boolean) => void;
+    children?: ReactNode;
+    open?: boolean;
+    title?: ReactNode;
+  }) {
+    useEffect(() => {
+      afterOpenChange?.(Boolean(open));
+    }, [afterOpenChange, open]);
+
+    if (!open) return null;
+
+    return (
+      <div data-testid="live-delivery-modal">
+        <div>{title}</div>
+        {children}
+      </div>
+    );
+  }
+
+  return {
+    ...actual,
+    Modal: TestModal,
+  };
+});
 
 import { formatTrackingDistance, formatTrackingEta } from '../formatTracking';
 import { LiveDeliveryMap } from '../index';
@@ -200,6 +245,55 @@ describe('LiveDeliveryMap', () => {
     expect(socketOn).toHaveBeenCalledWith('tracking:route', expect.any(Function));
     expect(socketOn).toHaveBeenCalledWith('tracking:ended', expect.any(Function));
     expect(mapInstances.length).toBeGreaterThan(0);
+  });
+
+  it('creates map and calls resize after modal opens', async () => {
+    render(
+      <LiveDeliveryMap
+        role="admin"
+        orderId="order-1"
+        open
+        onClose={vi.fn()}
+        fetchTracking={vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          data: { tracking: trackingSnapshot },
+        })}
+      />
+    );
+
+    await waitFor(() => {
+      expect(mapInstances.length).toBe(1);
+      expect(mapInstances[0].resize).toHaveBeenCalled();
+    });
+  });
+
+  it('sets marker LngLat before adding to map', async () => {
+    render(
+      <LiveDeliveryMap
+        role="admin"
+        orderId="order-1"
+        open
+        onClose={vi.fn()}
+        fetchTracking={vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          data: { tracking: trackingSnapshot },
+        })}
+      />
+    );
+
+    await waitFor(() => {
+      expect(markerInstances.length).toBeGreaterThanOrEqual(2);
+    });
+
+    for (const marker of markerInstances) {
+      expect(marker.setLngLat).toHaveBeenCalled();
+      expect(marker.addTo).toHaveBeenCalled();
+      const setOrder = marker.setLngLat.mock.invocationCallOrder[0];
+      const addOrder = marker.addTo.mock.invocationCallOrder[0];
+      expect(setOrder).toBeLessThan(addOrder);
+    }
   });
 
   it('shows stale banner when tracking is stale', async () => {
