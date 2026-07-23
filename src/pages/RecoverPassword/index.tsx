@@ -56,14 +56,15 @@ const RecoverPassword = () => {
           >
             {error ? <Alert message={error} showIcon type="error" /> : null}
             <p className="text-sm text-gray-600">
-              Introduce tu email y te enviaremos instrucciones para restablecer tu contraseña.
+              Introduce tu correo electrónico y te enviaremos instrucciones para restablecer tu
+              contraseña.
             </p>
             <Form.Item
-              label="Email *"
+              label="Correo electrónico *"
               name="email"
               rules={[
-                { required: true, message: 'El email es obligatorio' },
-                { type: 'email', message: 'Ingresa un email válido' },
+                { required: true, message: 'El correo es obligatorio' },
+                { type: 'email', message: 'Ingresa un correo válido' },
               ]}
             >
               <Input

@@ -114,7 +114,7 @@ const Account = () => {
                         type="success"
                       />
                     ) : null}
-                    <Form.Item label="Email">
+                    <Form.Item label="Correo electrónico">
                       <Input disabled value={user.email} />
                     </Form.Item>
                     <Form.Item label="Identificación (cédula)">

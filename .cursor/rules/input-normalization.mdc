@@ -1,0 +1,14 @@
+---
+description: Trim de textos y email en lowercase antes de enviar a la API
+alwaysApply: true
+---
+
+# Normalización de inputs al enviar a la API
+
+Antes de armar el payload hacia la API (submit / client API), normaliza los strings de inputs:
+
+1. **Texto** — `.trim()` en campos de texto.
+2. **Email** — `.trim()` y `.toLowerCase()`.
+3. **Passwords / secrets** — solo `.trim()` si aplica; nunca lowercase.
+
+Aplica en el punto de envío, no solo en el display de la UI.

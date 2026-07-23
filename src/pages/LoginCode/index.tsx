@@ -155,11 +155,11 @@ const LoginCode = () => {
             requiredMark={false}
           >
             <Form.Item
-              label="Email"
+              label="Correo electrónico"
               name="email"
               rules={[
-                { required: true, message: 'El email es obligatorio' },
-                { type: 'email', message: 'Ingresa un email válido' },
+                { required: true, message: 'El correo es obligatorio' },
+                { type: 'email', message: 'Ingresa un correo válido' },
               ]}
             >
               <Input

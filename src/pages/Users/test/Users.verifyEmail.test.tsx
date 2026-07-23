@@ -68,7 +68,7 @@ describe('Users admin verify email', () => {
 
   it('shows verify button for unverified users', async () => {
     render(<Users />);
-    expect(await screen.findByRole('button', { name: 'Verificar email' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Verificar correo' })).toBeInTheDocument();
     expect(screen.getByText('Pendiente')).toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe('Users admin verify email', () => {
     const user = userEvent.setup();
 
     render(<Users />);
-    await user.click(await screen.findByRole('button', { name: 'Verificar email' }));
+    await user.click(await screen.findByRole('button', { name: 'Verificar correo' }));
 
     await waitFor(() => {
       expect(mockVerifyAdminUserEmail).toHaveBeenCalledWith('u1');

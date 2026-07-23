@@ -100,7 +100,7 @@ describe('AdminOrders page smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('filter-order-id')).toHaveTextContent('Order ID');
+      expect(screen.getByTestId('filter-order-id')).toHaveTextContent('ID de pedido');
       expect(screen.getByTestId('filter-store')).toHaveTextContent('Sede');
       expect(screen.getByTestId('filter-status')).toHaveTextContent('Estado');
       expect(screen.getByTestId('filter-period')).toHaveTextContent('Período');

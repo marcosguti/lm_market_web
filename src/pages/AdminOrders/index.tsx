@@ -389,7 +389,7 @@ const AdminOrdersPage = () => {
           Órdenes de compra
         </Title>
         <Space wrap align="end">
-          <FilterField label="Order ID" testId="filter-order-id">
+          <FilterField label="ID de pedido" testId="filter-order-id">
             <Input.Search
               allowClear
               enterButton="Buscar"

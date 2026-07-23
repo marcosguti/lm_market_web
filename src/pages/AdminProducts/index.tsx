@@ -355,23 +355,35 @@ const AdminProducts = () => {
             items={[
               {
                 key: 'general',
-                label: 'General',
+                label: 'Datos generales',
                 children: (
                   <>
                     <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                      <Form.Item label="Código interno" name="code" rules={[{ required: true }]}>
+                      <Form.Item
+                        label="Código interno"
+                        name="code"
+                        rules={[{ required: true, message: 'El código es obligatorio' }]}
+                      >
                         <Input />
                       </Form.Item>
-                      <Form.Item label="Nombre" name="name" rules={[{ required: true }]}>
+                      <Form.Item
+                        label="Nombre"
+                        name="name"
+                        rules={[{ required: true, message: 'El nombre es obligatorio' }]}
+                      >
                         <Input />
                       </Form.Item>
-                      <Form.Item label="Marca" name="brand" rules={[{ required: true }]}>
+                      <Form.Item
+                        label="Marca"
+                        name="brand"
+                        rules={[{ required: true, message: 'La marca es obligatoria' }]}
+                      >
                         <Input />
                       </Form.Item>
                       <Form.Item
                         label="Departamento"
                         name="department"
-                        rules={[{ required: true }]}
+                        rules={[{ required: true, message: 'El departamento es obligatorio' }]}
                       >
                         <Input />
                       </Form.Item>
@@ -508,10 +520,14 @@ const AdminProducts = () => {
             items={[
               {
                 key: 'general',
-                label: 'General',
+                label: 'Datos generales',
                 children: (
                   <>
-                    <Form.Item label="Marca" name="brand" rules={[{ required: true }]}>
+                    <Form.Item
+                      label="Marca"
+                      name="brand"
+                      rules={[{ required: true, message: 'La marca es obligatoria' }]}
+                    >
                       <Input />
                     </Form.Item>
                     <Form.Item label="Descripción" name="description">

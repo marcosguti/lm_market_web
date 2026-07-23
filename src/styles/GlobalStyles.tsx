@@ -96,6 +96,55 @@ const GlobalStyles = () => {
             height: 6px;
           }
         }
+
+        .initial-loader {
+          position: relative;
+          flex-shrink: 0;
+          width: 150px;
+          height: 150px;
+          max-width: none;
+          max-height: none;
+          animation:
+            initial-loader-in 450ms ease-out both,
+            initial-loader-breathe 1.8s ease-in-out 450ms infinite alternate;
+        }
+        .initial-loader-logo-wrapper {
+          width: 150px;
+          height: 150px;
+          max-width: none;
+          max-height: none;
+          border-radius: 50%;
+          background-color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        .initial-loader-logo {
+          height: 110px;
+          width: auto;
+          max-width: none;
+        }
+        @keyframes initial-loader-in {
+          from {
+            opacity: 0;
+            transform: scale(0.92);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        @keyframes initial-loader-breathe {
+          from {
+            opacity: 1;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0.92;
+            transform: scale(1.04);
+          }
+        }
       `}
     />
   );

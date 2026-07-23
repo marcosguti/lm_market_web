@@ -40,10 +40,10 @@ const typeColor: Record<string, string> = {
 };
 
 const typeLabel: Record<string, string> = {
-  admin: 'Admin',
+  admin: 'Administrador',
   client: 'Cliente',
   deliveryDriver: 'Reparto',
-  superAdmin: 'Super admin',
+  superAdmin: 'Super administrador',
 };
 
 const Users = () => {
@@ -73,7 +73,7 @@ const Users = () => {
       { label: 'Reparto', value: 'deliveryDriver' as const },
     ];
     if (isSuper) {
-      return [...base, { label: 'Admin', value: 'admin' as const }];
+      return [...base, { label: 'Administrador', value: 'admin' as const }];
     }
     return base;
   }, [isSuper]);
@@ -83,7 +83,7 @@ const Users = () => {
       return [
         { label: 'Cliente', value: 'client' as const },
         { label: 'Reparto', value: 'deliveryDriver' as const },
-        { label: 'Admin', value: 'admin' as const },
+        { label: 'Administrador', value: 'admin' as const },
       ];
     }
     return typeOptions;
@@ -137,24 +137,13 @@ const Users = () => {
       ...values,
       address: values.address || undefined,
       phone: values.phone || undefined,
-      password: values.password || undefined,
       storeId: isSuper && needsStore ? values.storeId : undefined,
     });
     if (!res.ok) {
       void message.error((res.data as { error?: string })?.error ?? 'No se pudo crear');
       return;
     }
-    void message.success('Usuario creado');
-    if (res.data?.temporaryPassword) {
-      Modal.info({
-        content: (
-          <p>
-            Clave temporal: <strong>{res.data.temporaryPassword}</strong>
-          </p>
-        ),
-        title: 'Contraseña temporal',
-      });
-    }
+    void message.success('Usuario creado correctamente');
     setCreateOpen(false);
     void load();
   };
@@ -232,7 +221,7 @@ const Users = () => {
   const confirmVerifyEmail = (row: AdminUser) => {
     Modal.confirm({
       cancelText: 'Cancelar',
-      content: `¿Marcar el email de ${row.firstName} ${row.lastName} (${row.email}) como verificado? El usuario podrá iniciar sesión sin ingresar el código.`,
+      content: `¿Marcar el correo de ${row.firstName} ${row.lastName} (${row.email}) como verificado? El usuario podrá iniciar sesión sin ingresar el código.`,
       okText: 'Verificar',
       onOk: async () => {
         const res = await verifyAdminUserEmail(row.id);
@@ -240,10 +229,10 @@ const Users = () => {
           void message.error((res.data as { error?: string })?.error ?? 'No se pudo verificar');
           return Promise.reject(new Error('verify failed'));
         }
-        void message.success('Email verificado');
+        void message.success('Correo verificado');
         void load();
       },
-      title: 'Verificar email',
+      title: 'Verificar correo',
     });
   };
 
@@ -259,7 +248,7 @@ const Users = () => {
           </Tag>
         </div>
       ),
-      title: 'Email',
+      title: 'Correo electrónico',
     },
     {
       key: 'name',
@@ -302,12 +291,12 @@ const Users = () => {
             />
           </Tooltip>
           {!row.emailVerified ? (
-            <Tooltip title="Verificar email">
+            <Tooltip title="Verificar correo">
               <Button
                 type="text"
                 size="small"
                 icon={<CheckCircleOutlined />}
-                aria-label="Verificar email"
+                aria-label="Verificar correo"
                 onClick={() => confirmVerifyEmail(row)}
               />
             </Tooltip>
@@ -341,7 +330,7 @@ const Users = () => {
           <Input.Search
             allowClear
             enterButton="Buscar"
-            placeholder="Email, nombre o CI"
+            placeholder="Correo, nombre o CI"
             style={{ maxWidth: 320 }}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -374,6 +363,7 @@ const Users = () => {
       />
 
       <Modal
+        cancelText="Cancelar"
         destroyOnClose
         okText="Crear"
         onCancel={() => setCreateOpen(false)}
@@ -383,13 +373,28 @@ const Users = () => {
         width={520}
       >
         <Form form={createForm} layout="vertical">
-          <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
+          <Form.Item
+            label="Correo electrónico"
+            name="email"
+            rules={[
+              { required: true, message: 'El correo es obligatorio' },
+              { type: 'email', message: 'Ingresa un correo válido' },
+            ]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item label="Nombre" name="firstName" rules={[{ required: true }]}>
+          <Form.Item
+            label="Nombre"
+            name="firstName"
+            rules={[{ required: true, message: 'El nombre es obligatorio' }]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item label="Apellido" name="lastName" rules={[{ required: true }]}>
+          <Form.Item
+            label="Apellido"
+            name="lastName"
+            rules={[{ required: true, message: 'El apellido es obligatorio' }]}
+          >
             <Input />
           </Form.Item>
           <div className="flex items-end gap-3">
@@ -405,12 +410,16 @@ const Users = () => {
               className="mb-0 flex-1"
               label="CI / ID"
               name="numberId"
-              rules={[{ required: true }]}
+              rules={[{ required: true, message: 'La identificación es obligatoria' }]}
             >
               <Input />
             </Form.Item>
           </div>
-          <Form.Item label="Rol" name="type" rules={[{ required: true }]}>
+          <Form.Item
+            label="Rol"
+            name="type"
+            rules={[{ required: true, message: 'Selecciona el rol' }]}
+          >
             <Select options={typeOptions} />
           </Form.Item>
           {isSuper && (createType === 'admin' || createType === 'deliveryDriver') ? (
@@ -441,23 +450,14 @@ const Users = () => {
           <Form.Item label="Dirección" name="address">
             <Input />
           </Form.Item>
-          <Form.Item
-            extra="Si lo dejas vacío se usará #123456"
-            label="Contraseña (opcional)"
-            name="password"
-            rules={[
-              {
-                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
-                message: 'Debe incluir mayúsculas, minúsculas y números (mínimo 8 caracteres)',
-              },
-            ]}
-          >
-            <Input.Password />
-          </Form.Item>
+          <p style={{ color: 'rgba(0, 0, 0, 0.45)', marginBottom: 0 }}>
+            La contraseña se genera automáticamente y se envía por email al usuario.
+          </p>
         </Form>
       </Modal>
 
       <Modal
+        cancelText="Cancelar"
         destroyOnClose
         okText="Guardar"
         onCancel={() => {
@@ -470,13 +470,28 @@ const Users = () => {
         width={520}
       >
         <Form form={editForm} layout="vertical">
-          <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
+          <Form.Item
+            label="Correo electrónico"
+            name="email"
+            rules={[
+              { required: true, message: 'El correo es obligatorio' },
+              { type: 'email', message: 'Ingresa un correo válido' },
+            ]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item label="Nombre" name="firstName" rules={[{ required: true }]}>
+          <Form.Item
+            label="Nombre"
+            name="firstName"
+            rules={[{ required: true, message: 'El nombre es obligatorio' }]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item label="Apellido" name="lastName" rules={[{ required: true }]}>
+          <Form.Item
+            label="Apellido"
+            name="lastName"
+            rules={[{ required: true, message: 'El apellido es obligatorio' }]}
+          >
             <Input />
           </Form.Item>
           <div className="flex items-end gap-3">
@@ -492,7 +507,7 @@ const Users = () => {
               className="mb-0 flex-1"
               label="CI / ID"
               name="numberId"
-              rules={[{ required: true }]}
+              rules={[{ required: true, message: 'La identificación es obligatoria' }]}
             >
               <Input />
             </Form.Item>
@@ -503,7 +518,11 @@ const Users = () => {
               <span className="ml-2 text-xs text-gray-500">El rol no puede modificarse</span>
             </Form.Item>
           ) : (
-            <Form.Item label="Rol" name="type" rules={[{ required: true }]}>
+            <Form.Item
+              label="Rol"
+              name="type"
+              rules={[{ required: true, message: 'Selecciona el rol' }]}
+            >
               <Select options={editTypeOptions} />
             </Form.Item>
           )}

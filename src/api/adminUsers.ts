@@ -33,7 +33,6 @@ export interface PaginatedUsers {
 }
 
 export interface CreateUserResponse {
-  temporaryPassword?: string;
   user: AdminUser;
 }
 
@@ -54,7 +53,6 @@ export async function createAdminUser(body: {
   lastName: string;
   numberId: string;
   numberIdType: NumberIdType;
-  password?: string;
   phone?: string;
   storeId?: string;
   type: AdminAssignableUserType;
