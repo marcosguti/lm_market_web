@@ -131,7 +131,11 @@ const VerifyEmail = () => {
 
   return (
     <>
-      <SEO title="Verifica tu correo" description="Verifica tu correo en LM Market." />
+      <SEO
+        title="Verifica tu correo"
+        description="Verifica tu correo en LM Market."
+        robots="noindex, nofollow"
+      />
 
       <div className="mx-auto max-w-md px-4 py-12">
         <Title className="!mb-2 text-center" level={2}>

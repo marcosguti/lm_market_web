@@ -26,12 +26,12 @@ const otpCellStyle: CSSProperties = {
   flex: `0 0 ${OTP_CELL_SIZE_PX}px`,
   padding: 0,
   textAlign: 'center',
-  fontSize: 16,
+  fontSize: 20,
   fontWeight: 600,
   boxSizing: 'border-box',
 };
 
-/** Four-digit OTP input with 32x32 cells (see `.lm-otp` in index.css). */
+/** Four-digit OTP input with 36x36 cells (see `.lm-otp` in index.css). */
 export const OtpInput = ({
   length = OTP_DIGIT_COUNT,
   classNames,

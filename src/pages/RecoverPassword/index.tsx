@@ -31,6 +31,7 @@ const RecoverPassword = () => {
       <SEO
         title="Recuperar contraseña"
         description="Solicita restablecer tu contraseña en LM Market."
+        robots="noindex, nofollow"
       />
       <div className="mx-auto max-w-md px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
         <h1 className="mb-[24px] text-3xl font-bold text-gray-900">Recuperar contraseña</h1>

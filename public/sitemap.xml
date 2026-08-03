@@ -16,11 +16,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.lmmarket.com/terminos</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
     <loc>https://www.lmmarket.com/preguntas-frecuentes</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -31,23 +26,8 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.lmmarket.com/registro</loc>
+    <loc>https://www.lmmarket.com/terminos</loc>
     <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-  <url>
-    <loc>https://www.lmmarket.com/iniciar-sesion</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-  <url>
-    <loc>https://www.lmmarket.com/recuperar-password</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://www.lmmarket.com/restablecer-password</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.2</priority>
+    <priority>0.5</priority>
   </url>
 </urlset>

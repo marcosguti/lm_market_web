@@ -88,7 +88,11 @@ const Account = () => {
 
   return (
     <>
-      <SEO title="Mi cuenta" description="Gestiona tu perfil y contraseña en LM Market." />
+      <SEO
+        title="Mi cuenta"
+        description="Gestiona tu perfil y contraseña en LM Market."
+        robots="noindex, nofollow"
+      />
       <div className="mx-auto max-w-2xl px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
         <h1 className="mb-[32px] text-3xl font-bold text-gray-900">Mi cuenta</h1>
         <Collapse

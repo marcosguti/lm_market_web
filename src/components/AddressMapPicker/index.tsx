@@ -14,20 +14,12 @@ import {
   deliveryCityPolygonGeoJson,
   isInsideDeliveryCityPolygon,
 } from '../../utils/deliveryCities';
+import { createDestinationGpsMarkerElement } from '../DestinationGpsIcon/marker';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 function resolveMapboxToken() {
   return import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim() ?? '';
-}
-
-function createPinElement() {
-  const element = document.createElement('div');
-  element.textContent = '📍';
-  element.style.fontSize = '28px';
-  element.style.lineHeight = '1';
-  element.style.cursor = 'grab';
-  return element;
 }
 
 function resolveStart(
@@ -93,7 +85,11 @@ export function AddressMapPicker({
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     mapRef.current = map;
 
-    const marker = new mapboxgl.Marker({ draggable: true, element: createPinElement() })
+    const marker = new mapboxgl.Marker({
+      draggable: true,
+      element: createDestinationGpsMarkerElement({ cursor: 'grab' }),
+      anchor: 'bottom',
+    })
       .setLngLat([start.longitude, start.latitude])
       .addTo(map);
     markerRef.current = marker;

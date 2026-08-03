@@ -1,22 +1,26 @@
 User-agent: *
 Allow: /
-
 Allow: /nosotros
 Allow: /blog
 Allow: /contacto
 Allow: /terminos
 Allow: /preguntas-frecuentes
-Allow: /registro
-Allow: /iniciar-sesion
-Allow: /recuperar-password
-Allow: /restablecer-password
 
 Disallow: /cuenta
-Disallow: /checkout
+Disallow: /finalizar-compra
 Disallow: /mis-compras
-Disallow: /orders
-Disallow: /users
+Disallow: /pedidos
+Disallow: /usuarios
 Disallow: /productos
-Disallow: /reparto
+Disallow: /ofertas
+Disallow: /anuncios
+Disallow: /articulos-blog
+Disallow: /metodos-pago
+Disallow: /sincronizacion
+Disallow: /iniciar-sesion
+Disallow: /registro
+Disallow: /recuperar-contrasena
+Disallow: /restablecer-contrasena
+Disallow: /verificar-correo
 
 Sitemap: https://www.lmmarket.com/sitemap.xml

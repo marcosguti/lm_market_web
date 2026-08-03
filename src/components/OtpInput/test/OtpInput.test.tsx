@@ -5,7 +5,7 @@ import { OTP_CELL_SIZE_PX, OTP_DIGIT_COUNT } from '../../../constants/formTheme'
 import { OtpInput } from '../index';
 
 describe('OtpInput', () => {
-  it('renders OTP cells with lm-otp class for 32x32 styling', () => {
+  it('renders OTP cells with lm-otp class for 36x36 styling', () => {
     const { container } = render(<OtpInput />);
 
     const root = container.querySelector('.lm-otp');
@@ -27,7 +27,7 @@ describe('OtpInput', () => {
     expect(() => render(<OtpInput onChange={vi.fn()} />)).not.toThrow();
   });
 
-  it('applies fixed 32px inline styles to each cell', () => {
+  it('applies fixed 36px inline styles to each cell', () => {
     const { container } = render(<OtpInput />);
 
     const inputs = container.querySelectorAll<HTMLInputElement>('.ant-otp-input');

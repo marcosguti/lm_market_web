@@ -57,7 +57,11 @@ const ResetPassword = () => {
   if (!token || tokenError) {
     return (
       <>
-        <SEO title="Restablecer contraseña" description="Restablece tu contraseña en LM Market." />
+        <SEO
+          title="Restablecer contraseña"
+          description="Restablece tu contraseña en LM Market."
+          robots="noindex, nofollow"
+        />
         <div className="mx-auto max-w-md px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
           <h1 className="mb-[24px] text-3xl font-bold text-gray-900">Restablecer contraseña</h1>
           {validatingToken ? (
@@ -89,7 +93,11 @@ const ResetPassword = () => {
   if (validatingToken) {
     return (
       <>
-        <SEO title="Restablecer contraseña" description="Restablece tu contraseña en LM Market." />
+        <SEO
+          title="Restablecer contraseña"
+          description="Restablece tu contraseña en LM Market."
+          robots="noindex, nofollow"
+        />
         <div className="mx-auto flex max-w-md justify-center px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
           <Spin size="large" />
         </div>
@@ -102,6 +110,7 @@ const ResetPassword = () => {
       <SEO
         title="Restablecer contraseña"
         description="Elige una nueva contraseña para tu cuenta en LM Market."
+        robots="noindex, nofollow"
       />
       <div className="mx-auto max-w-md px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
         <h1 className="mb-[24px] text-3xl font-bold text-gray-900">Nueva contraseña</h1>

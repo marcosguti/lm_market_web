@@ -1,9 +1,11 @@
 import { Collapse } from 'antd';
 import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 
 import SEO from '../../components/SEO';
 import { PATHS } from '../../constants/paths';
+import { buildFaqPageSchema } from './buildFaqPageSchema';
 import faqs from './faqs.json';
 
 interface FAQItem {
@@ -13,6 +15,7 @@ interface FAQItem {
 
 const FAQ = () => {
   const items = faqs as FAQItem[];
+  const faqSchemaJson = JSON.stringify(buildFaqPageSchema(items));
 
   return (
     <>
@@ -20,6 +23,9 @@ const FAQ = () => {
         title="Preguntas Frecuentes"
         description="Respuestas sobre cuenta, pedidos, entregas en Mérida y Tovar, pagos y seguimiento en LM Market."
       />
+      <Helmet>
+        <script type="application/ld+json">{faqSchemaJson}</script>
+      </Helmet>
       <div className="mx-auto max-w-4xl px-[16px] py-[48px] sm:px-[24px] lg:px-[32px]">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}

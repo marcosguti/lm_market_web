@@ -121,7 +121,11 @@ const LoginCode = () => {
 
   return (
     <>
-      <SEO title="Iniciar sesión con código" description="Accede con un código de 4 dígitos." />
+      <SEO
+        title="Iniciar sesión con código"
+        description="Accede con un código de 4 dígitos."
+        robots="noindex, nofollow"
+      />
 
       <div className="mx-auto max-w-md px-4 py-12">
         <Title className="!mb-2 text-center" level={2}>

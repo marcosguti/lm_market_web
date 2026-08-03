@@ -36,24 +36,31 @@
 }
 
 .lm-otp.ant-otp .ant-otp-input-wrapper {
-  flex: 0 0 32px !important;
-  width: 32px !important;
-  min-width: 32px !important;
-  max-width: 32px !important;
+  flex: 0 0 36px !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
 }
 
 .lm-otp.ant-otp input.ant-otp-input.ant-input,
 .lm-otp.ant-otp .lm-otp-cell {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  max-width: 32px !important;
-  flex: 0 0 32px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  flex: 0 0 36px !important;
   padding: 0 !important;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
   text-align: center;
   box-sizing: border-box;
+}
+
+.lm-otp.ant-otp input.ant-otp-input.ant-input:focus,
+.lm-otp.ant-otp input.ant-otp-input.ant-input:focus-within,
+.lm-otp.ant-otp .lm-otp-cell:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 @layer base {

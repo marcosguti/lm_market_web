@@ -4,7 +4,7 @@ import { OTP_CELL_SIZE_PX, OTP_DIGIT_COUNT } from '../formTheme';
 
 describe('formTheme', () => {
   it('defines OTP cell size matching mobile', () => {
-    expect(OTP_CELL_SIZE_PX).toBe(32);
+    expect(OTP_CELL_SIZE_PX).toBe(36);
   });
 
   it('defines OTP digit count matching mobile', () => {
